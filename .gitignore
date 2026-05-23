@@ -1,0 +1,21 @@
+# Virtual environment
+.venv/
+
+# Environment variables (contains API key)
+.env
+
+# Uploaded images
+uploads/*
+!uploads/.gitkeep
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Server log
+server.log
+
+# IDE
+.idea/
+.vscode/

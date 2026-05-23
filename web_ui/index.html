@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skin Lesion Detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="page">
+
+    <!-- Header -->
+    <header>
+      <div class="logo">🔬</div>
+      <div class="header-text">
+        <h1>Skin Lesion Detection</h1>
+        <p>AI-powered dermatology analysis · Gemini Vision</p>
+      </div>
+      <span class="badge">Research Tool</span>
+    </header>
+
+    <!-- Upload Zone -->
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp" multiple />
+
+      <!-- Empty state -->
+      <div id="emptyState">
+        <span class="upload-icon">🩻</span>
+        <h2>Drop skin lesion images here</h2>
+        <p>Supports JPG, PNG, WebP · Multiple files allowed</p>
+        <label class="upload-btn" for="fileInput">＋ &nbsp;Browse Files</label>
+      </div>
+
+      <!-- Files state -->
+      <div id="filesState" style="display:none;">
+        <div class="preview-grid" id="previewGrid"></div>
+        <div class="files-actions">
+          <button class="add-more-btn" id="addMoreBtn">＋ Add more</button>
+          <button class="clear-btn" id="clearBtn">Clear all</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analyse Button -->
+    <div class="analyse-wrap" id="analyseWrap">
+      <button class="btn-analyse" id="analyseBtn">Analyse Images</button>
+    </div>
+
+    <!-- Results -->
+    <div class="results-section" id="resultsSection" style="display:none;">
+      <p class="results-title">Analysis Results</p>
+      <div id="resultsContainer"></div>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
