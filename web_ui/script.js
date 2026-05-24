@@ -13,13 +13,25 @@ const resultsSection = document.getElementById('resultsSection');
 const resultsContainer = document.getElementById('resultsContainer');
 
 const CLASS_LABEL = {
-  MEL:   'Melanoma (MEL)',
-  NV:    'Melanocytic Nevi (NV)',
-  BCC:   'Basal Cell Carcinoma (BCC)',
-  AKIEC: 'Actinic Keratosis / SCC (AKIEC)',
-  BKL:   'Benign Keratosis (BKL)',
-  DF:    'Dermatofibroma (DF)',
-  VASC:  'Vascular Lesion (VASC)',
+  // Malignant
+  MEL:       'Melanoma (MEL)',
+  BCC:       'Basal Cell Carcinoma (BCC)',
+  AKIEC:     'Actinic Keratosis / SCC (AKIEC)',
+  // Benign — dermoscopic
+  NV:        'Melanocytic Nevi (NV)',
+  BKL:       'Benign Keratosis (BKL)',
+  DF:        'Dermatofibroma (DF)',
+  VASC:      'Vascular Lesion (VASC)',
+  // Common skin conditions
+  WART:      'Wart / Verruca',
+  ECZEMA:    'Eczema / Dermatitis',
+  PSORIASIS: 'Psoriasis',
+  ACNE:      'Acne',
+  SEBDERM:   'Seborrheic Dermatitis',
+  ROSACEA:   'Rosacea',
+  TINEA:     'Tinea / Fungal Infection',
+  VITILIGO:  'Vitiligo',
+  OTHER:     'Other Condition',
 };
 
 let selectedFiles = [];

@@ -15,31 +15,53 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 MODEL                = "gemini-2.5-pro"
 CANCER_CLASSES       = {"MEL", "BCC", "AKIEC"}
-ALL_CLASSES          = ["MEL", "NV", "BCC", "AKIEC", "BKL", "DF", "VASC"]
+ALL_CLASSES          = [
+    # Malignant
+    "MEL", "BCC", "AKIEC",
+    # Benign — dermoscopic (ISIC)
+    "NV", "BKL", "DF", "VASC",
+    # Benign — common skin conditions
+    "WART", "ECZEMA", "PSORIASIS", "ACNE", "SEBDERM", "ROSACEA", "TINEA", "VITILIGO",
+    # Catch-all
+    "OTHER",
+]
 NON_CANCER_THRESHOLD = 20.0
 
-PROMPT = """You are a dermatology AI assistant specialized in skin lesion analysis.
+PROMPT = """You are a dermatology AI assistant specialized in skin condition analysis.
 
-Analyze the skin lesion image and estimate the probability (percentage, 0-100) that it belongs to each category. Probabilities must sum to exactly 100.
+Analyze the skin image and estimate the probability (percentage, 0-100) that it belongs to each category below. Probabilities must sum to exactly 100.
 
-Categories:
-- MEL: Melanoma (malignant)
-- NV: Melanocytic Nevi / moles (benign)
-- BCC: Basal Cell Carcinoma (malignant)
-- AKIEC: Actinic Keratosis / Squamous Cell Carcinoma (malignant/pre-malignant)
-- BKL: Benign Keratosis-like Lesions (benign)
-- DF: Dermatofibroma (benign)
-- VASC: Vascular Lesions (benign)
+Malignant:
+- MEL: Melanoma — irregular pigmented lesion, asymmetry, varied color
+- BCC: Basal Cell Carcinoma — pearly or translucent nodule, rolled border, telangiectasia
+- AKIEC: Actinic Keratosis / Squamous Cell Carcinoma — rough scaly patch on sun-exposed skin
+
+Benign (dermoscopic):
+- NV: Melanocytic Nevi — common mole, uniform color and border
+- BKL: Benign Keratosis-like Lesions — seborrheic keratosis, stuck-on waxy appearance
+- DF: Dermatofibroma — firm nodule, often on legs, central white scar
+- VASC: Vascular Lesions — angioma, hemangioma, bright red/purple vascular structures
+
+Common skin conditions:
+- WART: Wart / Verruca — rough cauliflower-like surface, HPV-related
+- ECZEMA: Eczema / Dermatitis — red, itchy, inflamed, often with scaling or weeping
+- PSORIASIS: Psoriasis — well-defined red plaques with silvery-white scales
+- ACNE: Acne — comedones, papules, pustules, nodules on face/back/chest
+- SEBDERM: Seborrheic Dermatitis — greasy yellowish scales on scalp, face, or chest
+- ROSACEA: Rosacea — persistent facial redness, visible vessels, papules
+- TINEA: Tinea / Fungal Infection — ring-like scaly patch, ringworm or athlete's foot
+- VITILIGO: Vitiligo — depigmented white patches with sharp borders
+
+Other:
+- OTHER: Does not clearly match any category above, or image quality is insufficient
 
 You must respond in English only. Return ONLY a valid JSON object, no extra text:
 {
-  "MEL": <number>,
-  "NV": <number>,
-  "BCC": <number>,
-  "AKIEC": <number>,
-  "BKL": <number>,
-  "DF": <number>,
-  "VASC": <number>
+  "MEL": <number>, "BCC": <number>, "AKIEC": <number>,
+  "NV": <number>, "BKL": <number>, "DF": <number>, "VASC": <number>,
+  "WART": <number>, "ECZEMA": <number>, "PSORIASIS": <number>,
+  "ACNE": <number>, "SEBDERM": <number>, "ROSACEA": <number>,
+  "TINEA": <number>, "VITILIGO": <number>, "OTHER": <number>
 }"""
 
 
