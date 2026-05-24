@@ -29,6 +29,13 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app = FastAPI(title="皮肤病变检测 API", version="1.0.0")
 
+
+@app.on_event("startup")
+def clear_on_startup():
+    for fname in os.listdir(UPLOAD_DIR):
+        if os.path.splitext(fname)[1].lower() in ALLOWED_EXT:
+            os.remove(os.path.join(UPLOAD_DIR, fname))
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

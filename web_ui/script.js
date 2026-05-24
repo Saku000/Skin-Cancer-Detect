@@ -26,7 +26,13 @@ let selectedFiles = [];
 
 /* ── Drag & Drop ── */
 uploadZone.addEventListener('click', e => {
-  if (!e.target.closest('button') && !selectedFiles.length) fileInput.click();
+  if (e.target.closest('button, label')) return;
+  if (!selectedFiles.length) fileInput.click();
+});
+
+document.getElementById('browseBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  fileInput.click();
 });
 
 addMoreBtn.addEventListener('click', e => {
@@ -34,12 +40,13 @@ addMoreBtn.addEventListener('click', e => {
   fileInput.click();
 });
 
-clearBtn.addEventListener('click', e => {
+clearBtn.addEventListener('click', async e => {
   e.stopPropagation();
   selectedFiles = [];
   renderPreviews();
   resultsSection.style.display = 'none';
   resultsContainer.innerHTML = '';
+  await fetch(`${API}/clear`, { method: 'DELETE' });
 });
 
 uploadZone.addEventListener('dragover', e => {
@@ -99,7 +106,8 @@ analyseBtn.addEventListener('click', async () => {
   resultsContainer.innerHTML = '';
 
   try {
-    // 1. Upload
+    // 1. Clear old uploads, then upload current files
+    await fetch(`${API}/clear`, { method: 'DELETE' });
     const formData = new FormData();
     selectedFiles.forEach(f => formData.append('files', f));
     const uploadRes = await fetch(`${API}/upload`, { method: 'POST', body: formData });
@@ -111,12 +119,13 @@ analyseBtn.addEventListener('click', async () => {
     if (!analyseRes.ok) throw new Error(`Analysis failed: ${analyseRes.statusText}`);
     const data = await analyseRes.json();
 
-    // 3. Render
+    // 3. Render — match by filename, not index
     resultsSection.style.display = 'block';
     data.results.forEach((result, idx) => {
+      const file = selectedFiles.find(f => f.name === result.filename);
       const card = result.error
         ? buildErrorCard(result)
-        : buildResultCard(result, selectedFiles[idx]);
+        : buildResultCard(result, file);
       resultsContainer.appendChild(card);
       card.style.animationDelay = `${idx * 0.1}s`;
     });
