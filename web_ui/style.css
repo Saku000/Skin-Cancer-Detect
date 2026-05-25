@@ -510,6 +510,66 @@ header {
   margin-top: 48px;
 }
 
+.lighting-warning {
+  background: rgba(251, 191, 36, 0.07);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 22px;
+}
+
+.lw-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.lw-icon { font-size: 20px; line-height: 1.3; }
+
+.lw-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fbbf24;
+  margin-bottom: 4px;
+}
+
+.lw-desc {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.lw-thumbs {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.lw-thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.lw-thumb img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid rgba(251, 191, 36, 0.4);
+}
+
+.lw-thumb span {
+  font-size: 11px;
+  color: var(--text-muted);
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .results-title {
   font-size: 13px;
   font-weight: 600;

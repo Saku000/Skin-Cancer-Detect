@@ -6,7 +6,7 @@
   <title>Skin Lesion Detection</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=3" />
+  <link rel="stylesheet" href="style.css?v=4" />
 </head>
 <body>
   <div class="page">
@@ -87,6 +87,19 @@
     <!-- Results -->
     <div class="results-section" id="resultsSection" style="display:none;">
       <p class="results-title">Analysis Results</p>
+
+      <!-- Lighting warning -->
+      <div class="lighting-warning" id="lightingWarning" style="display:none;">
+        <div class="lw-header">
+          <span class="lw-icon">💡</span>
+          <div>
+            <div class="lw-title">Poor lighting detected</div>
+            <div class="lw-desc">The images below appear to have poor lighting conditions, which may affect accuracy. Consider retaking them in better light.</div>
+          </div>
+        </div>
+        <div class="lw-thumbs" id="lwThumbs"></div>
+      </div>
+
       <div id="resultsContainer"></div>
     </div>
 
@@ -133,6 +146,6 @@
 
   </div>
 
-  <script src="script.js?v=9"></script>
+  <script src="script.js?v=10"></script>
 </body>
 </html>

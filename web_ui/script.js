@@ -223,6 +223,7 @@ clearBtn.addEventListener('click', async e => {
   renderPreviews();
   resultsSection.style.display = 'none';
   resultsContainer.innerHTML = '';
+  document.getElementById('lightingWarning').style.display = 'none';
   await fetch(`${API}/clear`, { method: 'DELETE' });
 });
 
@@ -313,6 +314,30 @@ analyseBtn.addEventListener('click', async () => {
         el.style.width = el.dataset.pct + '%';
       });
     });
+
+    // Lighting warning
+    const poorLit = data.results.filter(r => !r.error && r.lighting_ok === false);
+    const lwSection = document.getElementById('lightingWarning');
+    const lwThumbs  = document.getElementById('lwThumbs');
+    if (poorLit.length > 0) {
+      lwThumbs.innerHTML = '';
+      poorLit.forEach(r => {
+        const file = selectedFiles.find(f => f.name === r.filename);
+        const wrap = document.createElement('div');
+        wrap.className = 'lw-thumb';
+        const img = document.createElement('img');
+        img.src = file ? URL.createObjectURL(file) : '';
+        img.alt = r.filename;
+        const label = document.createElement('span');
+        label.textContent = r.filename;
+        wrap.appendChild(img);
+        wrap.appendChild(label);
+        lwThumbs.appendChild(wrap);
+      });
+      lwSection.style.display = 'block';
+    } else {
+      lwSection.style.display = 'none';
+    }
 
     // Chat: update context and auto-generate summary
     currentResults = data.results;
