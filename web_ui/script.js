@@ -170,6 +170,7 @@ async function sendMessage(text) {
       }),
     });
     const data = await res.json();
+    console.log('[chat] data keys:', Object.keys(data), '| facilities:', data.facilities?.length ?? 'none');
     typing.remove();
     const msgEl = appendMessage('assistant', data.reply);
     chatHistory.push({ role: 'assistant', content: data.reply });
