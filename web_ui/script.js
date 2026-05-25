@@ -61,80 +61,36 @@ function appendMessage(role, content) {
 }
 
 /* ── Facility Map ── */
-async function geocode(query) {
-  await new Promise(r => setTimeout(r, 400));
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`
-    );
-    const data = await res.json();
-    if (data[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-  } catch { /* ignore */ }
-  return null;
-}
-
-async function renderFacilityMap(facilities, userZip) {
-  console.log('[map] called — facilities:', facilities.length, 'zip:', userZip);
-
-  if (typeof L === 'undefined') {
-    console.error('[map] Leaflet (L) is not defined — CDN failed to load');
-    return;
-  }
-
-  // Build container and append at bottom of chat
+function renderFacilityMap(facilities, userZip) {
   const wrap = document.createElement('div');
   wrap.className = 'chat-map-wrap';
-  const mapEl = document.createElement('div');
-  mapEl.className = 'chat-map';
-  mapEl.style.height = '210px';
-  mapEl.style.width = '100%';
-  const mapId = 'map-' + Date.now();
-  mapEl.id = mapId;
-  wrap.appendChild(mapEl);
+
+  // Google Maps iframe — search for dermatology near the user's zip
+  const searchQuery = userZip
+    ? `dermatology clinics near ${userZip}`
+    : facilities[0].address;
+  const iframe = document.createElement('iframe');
+  iframe.src = `https://maps.google.com/maps?q=${encodeURIComponent(searchQuery)}&output=embed&z=13`;
+  iframe.style.cssText = 'width:100%;height:220px;border:0;display:block;';
+  iframe.setAttribute('allowfullscreen', '');
+  iframe.setAttribute('loading', 'lazy');
+  wrap.appendChild(iframe);
+
+  // Clickable facility chips below the map
+  const links = document.createElement('div');
+  links.className = 'map-links';
+  facilities.forEach((f, i) => {
+    const a = document.createElement('a');
+    a.className = 'map-link-btn';
+    a.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(f.name + ' ' + f.address)}`;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = `${i + 1}. ${f.name}`;
+    links.appendChild(a);
+  });
+  wrap.appendChild(links);
+
   chatMessages.appendChild(wrap);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-
-  // Give browser time to layout the container before Leaflet measures it
-  await new Promise(r => setTimeout(r, 200));
-  console.log('[map] container size:', mapEl.offsetWidth, 'x', mapEl.offsetHeight);
-
-  const map = L.map(mapId, { scrollWheelZoom: false });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://openstreetmap.org" target="_blank">OpenStreetMap</a>',
-    maxZoom: 18,
-  }).addTo(map);
-  map.setView([34.0, -118.0], 11);
-  map.invalidateSize();
-  console.log('[map] Leaflet initialized');
-
-  const points = [];
-
-  if (userZip) {
-    const pos = await geocode(userZip + ', USA');
-    console.log('[map] user zip pos:', pos);
-    if (pos) {
-      points.push(pos);
-      L.circleMarker(pos, { radius: 9, color: '#fff', weight: 2, fillColor: '#fbbf24', fillOpacity: 1 })
-        .addTo(map).bindPopup(`<b>Your location</b><br>ZIP: ${userZip}`);
-    }
-  }
-
-  for (const f of facilities) {
-    const pos = await geocode(f.address);
-    console.log('[map] facility pos:', f.name, pos);
-    if (!pos) continue;
-    points.push(pos);
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(f.name + ' ' + f.address)}`;
-    L.circleMarker(pos, { radius: 9, color: '#fff', weight: 2, fillColor: '#00c4d2', fillOpacity: 1 })
-      .addTo(map)
-      .bindPopup(`<b>${f.name}</b><br>${f.address}<br>${f.phone || ''}<br><a href="${mapsUrl}" target="_blank" rel="noopener">Open in Google Maps ↗</a>`);
-  }
-
-  if (points.length > 0) {
-    map.fitBounds(points, { padding: [30, 30] });
-    console.log('[map] fitBounds with', points.length, 'points');
-  }
-  map.invalidateSize();
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
@@ -190,7 +146,6 @@ async function sendMessage(text) {
     typing.remove();
     const msgEl = appendMessage('assistant', data.reply);
     chatHistory.push({ role: 'assistant', content: data.reply });
-    console.log('[chat] reply received, facilities:', data.facilities?.length, 'zip:', data.user_location);
     if (data.facilities && data.facilities.length > 0) {
       renderFacilityMap(data.facilities, data.user_location);
     }
