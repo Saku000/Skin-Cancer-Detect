@@ -149,14 +149,15 @@ header {
   box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 4px 20px rgba(0,0,0,0.4);
   backdrop-filter: blur(20px);
   z-index: 200;
+  visibility: hidden;
   opacity: 0;
-  transform: translateY(-8px) scale(0.96);
+  transform: translateY(-10px) scale(0.95);
   pointer-events: none;
   transition: opacity 0.2s ease,
-              transform 0.28s cubic-bezier(0.34,1.56,0.64,1);
+              transform 0.28s cubic-bezier(0.34,1.56,0.64,1),
+              visibility 0s 0.28s;
 }
 
-/* Arrow pointing up to the button */
 .settings-panel::before {
   content: '';
   position: absolute;
@@ -172,9 +173,13 @@ header {
 }
 
 .settings-panel.open {
+  visibility: visible;
   opacity: 1;
   transform: translateY(0) scale(1);
   pointer-events: all;
+  transition: opacity 0.2s ease,
+              transform 0.28s cubic-bezier(0.34,1.56,0.64,1),
+              visibility 0s;
 }
 
 .sp-title {
