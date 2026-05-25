@@ -5,13 +5,13 @@ analyzer.py — Gemini Vision 皮肤病变分析
 import os
 import json
 import re
-import google.generativeai as genai
+from google import genai
 from PIL import Image
 from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 MODEL                = "gemini-2.5-pro"
 CANCER_CLASSES       = {"MEL", "BCC", "AKIEC"}
@@ -104,8 +104,7 @@ def _build_result(filename: str, probs: dict[str, float]) -> dict:
 def analyze_file(filepath: str) -> dict:
     """从磁盘读取图片文件并分析。"""
     img      = Image.open(filepath).convert("RGB")
-    model    = genai.GenerativeModel(MODEL)
-    response = model.generate_content([img, PROMPT])
+    response = _client.models.generate_content(model=MODEL, contents=[img, PROMPT])
     probs    = _parse_probabilities(response.text)
     probs    = _normalize(probs)
     return _build_result(os.path.basename(filepath), probs)
