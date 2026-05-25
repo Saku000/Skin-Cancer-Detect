@@ -113,11 +113,11 @@ def _build_result(filename: str, probs: dict[str, float]) -> dict:
     }
 
 
-def analyze_file(filepath: str) -> dict:
-    """跑 N_RUNS 次，每个类别取最大概率后返回结果。"""
+def analyze_file(filepath: str, n_runs: int = N_RUNS) -> dict:
+    """跑 n_runs 次，每个类别取最大概率后返回结果。"""
     img  = Image.open(filepath).convert("RGB")
     runs = []
-    for _ in range(N_RUNS):
+    for _ in range(n_runs):
         response = _client.models.generate_content(
             model=MODEL, contents=[img, PROMPT], config=_config
         )

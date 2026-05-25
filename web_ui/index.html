@@ -19,7 +19,34 @@
         <p>AI-powered dermatology analysis · Gemini Vision</p>
       </div>
       <span class="badge">Research Tool</span>
+      <button class="settings-btn" id="settingsBtn" title="Settings">⚙</button>
     </header>
+
+    <!-- Settings Modal -->
+    <div class="settings-backdrop" id="settingsBackdrop">
+      <div class="settings-modal" id="settingsModal">
+        <div class="settings-header">
+          <span>Settings</span>
+          <button class="settings-close" id="settingsClose">✕</button>
+        </div>
+        <div class="settings-body">
+          <div class="setting-row">
+            <div class="setting-label">
+              <span>API Runs per Image</span>
+              <span class="setting-desc">Each run is one Gemini call.<br>Higher = more stable, slower &amp; costlier.</span>
+            </div>
+            <div class="stepper">
+              <button class="stepper-btn" id="stepperMinus">−</button>
+              <span class="stepper-val" id="stepperVal">3</span>
+              <button class="stepper-btn" id="stepperPlus">＋</button>
+            </div>
+          </div>
+        </div>
+        <div class="settings-footer">
+          <button class="btn-apply" id="applyBtn">Apply</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Upload Zone -->
     <div class="upload-zone" id="uploadZone">
@@ -56,6 +83,6 @@
 
   </div>
 
-  <script src="script.js?v=4"></script>
+  <script src="script.js?v=5"></script>
 </body>
 </html>

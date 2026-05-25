@@ -35,6 +35,54 @@ const CLASS_LABEL = {
 };
 
 let selectedFiles = [];
+let nRuns = 3;
+
+/* ── Settings ── */
+const settingsBtn      = document.getElementById('settingsBtn');
+const settingsBackdrop = document.getElementById('settingsBackdrop');
+const settingsClose    = document.getElementById('settingsClose');
+const stepperMinus     = document.getElementById('stepperMinus');
+const stepperPlus      = document.getElementById('stepperPlus');
+const stepperVal       = document.getElementById('stepperVal');
+const applyBtn         = document.getElementById('applyBtn');
+
+let pendingRuns = nRuns;
+
+function openSettings() {
+  pendingRuns = nRuns;
+  stepperVal.textContent = pendingRuns;
+  settingsBackdrop.classList.add('visible');
+  settingsBtn.classList.add('open');
+}
+
+function closeSettings() {
+  settingsBackdrop.classList.remove('visible');
+  settingsBtn.classList.remove('open');
+}
+
+function bumpVal() {
+  stepperVal.classList.remove('bump');
+  void stepperVal.offsetWidth;
+  stepperVal.classList.add('bump');
+  setTimeout(() => stepperVal.classList.remove('bump'), 150);
+}
+
+settingsBtn.addEventListener('click', openSettings);
+settingsClose.addEventListener('click', closeSettings);
+settingsBackdrop.addEventListener('click', e => { if (e.target === settingsBackdrop) closeSettings(); });
+
+stepperMinus.addEventListener('click', () => {
+  if (pendingRuns > 1) { pendingRuns--; stepperVal.textContent = pendingRuns; bumpVal(); }
+});
+stepperPlus.addEventListener('click', () => {
+  if (pendingRuns < 5) { pendingRuns++; stepperVal.textContent = pendingRuns; bumpVal(); }
+});
+
+applyBtn.addEventListener('click', () => {
+  nRuns = pendingRuns;
+  applyBtn.textContent = '✓ Applied';
+  setTimeout(() => { applyBtn.textContent = 'Apply'; closeSettings(); }, 600);
+});
 
 /* ── Drag & Drop ── */
 uploadZone.addEventListener('click', e => {
@@ -127,7 +175,7 @@ analyseBtn.addEventListener('click', async () => {
 
     // 2. Analyse
     analyseBtn.innerHTML = '<span class="spinner"></span> Analysing...';
-    const analyseRes = await fetch(`${API}/analyze`, { method: 'POST' });
+    const analyseRes = await fetch(`${API}/analyze?n_runs=${nRuns}`, { method: 'POST' });
     if (!analyseRes.ok) throw new Error(`Analysis failed: ${analyseRes.statusText}`);
     const data = await analyseRes.json();
 

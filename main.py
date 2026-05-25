@@ -95,7 +95,7 @@ def list_files():
 
 
 @app.post("/analyze")
-def analyze_all():
+def analyze_all(n_runs: int = 3):
     """分析 uploads/ 文件夹里的所有图片。"""
     images = _list_images()
     if not images:
@@ -105,7 +105,7 @@ def analyze_all():
     for fname in images:
         path = os.path.join(UPLOAD_DIR, fname)
         try:
-            results.append(analyze_file(path))
+            results.append(analyze_file(path, n_runs=n_runs))
         except Exception as e:
             results.append({"filename": fname, "error": str(e)})
 
