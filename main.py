@@ -145,8 +145,7 @@ class SummaryRequest(BaseModel):
 @app.post("/chat")
 def chat(req: ChatRequest):
     history = [{"role": m.role, "content": m.content} for m in req.history]
-    reply = chat_reply(req.message, history, req.results)
-    return {"reply": reply}
+    return chat_reply(req.message, history, req.results)
 
 
 @app.post("/chat/summary")

@@ -894,6 +894,37 @@ header {
   border-bottom-right-radius: 4px;
 }
 
+.chat-map-wrap {
+  align-self: flex-start;
+  width: calc(100% - 4px);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  margin-top: 6px;
+  animation: msgIn 0.3s ease both;
+}
+
+.chat-map {
+  height: 210px;
+  width: 100%;
+}
+
+.map-marker {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+.map-marker.facility { background: var(--teal); }
+.map-marker.user     { background: #fbbf24; }
+
+.leaflet-popup-content a {
+  color: var(--teal);
+  text-decoration: none;
+}
+.leaflet-popup-content a:hover { text-decoration: underline; }
+
 .msg.assistant {
   align-self: flex-start;
   background: rgba(255,255,255,0.05);

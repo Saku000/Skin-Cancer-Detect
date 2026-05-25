@@ -2,11 +2,12 @@
 chatbot.py — AI assistant chat logic for skin lesion results
 
 Endpoints consumed:
-    POST /chat          -> chat_reply()
+    POST /chat          -> chat_reply()  returns dict with reply + facilities
     POST /chat/summary  -> generate_summary()
 """
 
 import os
+import re
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -88,19 +89,41 @@ def _call(prompt: str, search: bool = False) -> str:
     text = response.text
     if text:
         return text
-
-    # Log why it's empty
     try:
         candidate = response.candidates[0]
         print(f"[chatbot] finish_reason={candidate.finish_reason}")
         print(f"[chatbot] safety_ratings={candidate.safety_ratings}")
-        # Try extracting text directly from parts
         part_text = candidate.content.parts[0].text
         if part_text:
             return part_text
     except Exception as e:
         print(f"[chatbot] inspection error: {e}")
     return ""
+
+
+def _extract_zipcode(text: str) -> str | None:
+    """Extract first US 5-digit zipcode from text."""
+    m = re.search(r'\b(\d{5})\b', text)
+    return m.group(1) if m else None
+
+
+def _parse_facilities(text: str) -> list[dict]:
+    """Parse numbered facility entries from formatted response text."""
+    facilities = []
+    current: dict = {}
+    for line in text.splitlines():
+        stripped = line.strip()
+        if re.match(r'^\d+\.', stripped):
+            if current.get('name'):
+                facilities.append(current)
+            current = {'name': re.sub(r'^\d+\.\s*', '', stripped)}
+        elif stripped.startswith('Address:'):
+            current['address'] = stripped[len('Address:'):].strip()
+        elif stripped.startswith('Phone:'):
+            current['phone'] = stripped[len('Phone:'):].strip()
+    if current.get('name'):
+        facilities.append(current)
+    return facilities
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -112,8 +135,8 @@ def generate_summary(results: list) -> str:
     return _call(prompt)
 
 
-def chat_reply(message: str, history: list, results: list = None) -> str:
-    """Multi-turn chat response. History is formatted as plain text in the prompt."""
+def chat_reply(message: str, history: list, results: list = None) -> dict:
+    """Multi-turn chat response. Returns reply text plus structured facility data."""
     ctx   = _build_context(results)
     lines = [ctx, "---"]
     for msg in history:
@@ -122,8 +145,15 @@ def chat_reply(message: str, history: list, results: list = None) -> str:
     lines.append(f"User: {message}")
     lines.append("Assistant:")
     prompt = "\n".join(lines)
-    reply = _call(prompt, search=True)
-    # Strip any leading "Assistant:" the model might echo back
+    reply  = _call(prompt, search=True)
     if reply.startswith("Assistant:"):
         reply = reply[len("Assistant:"):].strip()
-    return reply
+
+    facilities    = _parse_facilities(reply)
+    user_location = _extract_zipcode(message) if facilities else None
+
+    return {
+        "reply":         reply,
+        "facilities":    facilities,
+        "user_location": user_location,
+    }

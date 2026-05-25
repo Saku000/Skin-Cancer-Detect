@@ -57,6 +57,81 @@ function appendMessage(role, content) {
   msg.textContent = content;
   chatMessages.appendChild(msg);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+  return msg;
+}
+
+/* ── Facility Map ── */
+const facilityIcon = L.divIcon({
+  className: '', html: '<div class="map-marker facility"></div>',
+  iconSize: [14, 14], iconAnchor: [7, 7], popupAnchor: [0, -8],
+});
+const userIcon = L.divIcon({
+  className: '', html: '<div class="map-marker user"></div>',
+  iconSize: [14, 14], iconAnchor: [7, 7], popupAnchor: [0, -8],
+});
+
+async function geocode(query) {
+  await new Promise(r => setTimeout(r, 350)); // Nominatim rate limit
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
+      { headers: { 'User-Agent': 'SkinLesionDetect/1.0' } }
+    );
+    const data = await res.json();
+    if (data[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+  } catch { /* ignore geocoding failures */ }
+  return null;
+}
+
+async function renderFacilityMap(afterEl, facilities, userZip) {
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-map-wrap';
+  const mapEl = document.createElement('div');
+  mapEl.className = 'chat-map';
+  mapEl.id = 'map-' + Date.now();
+  wrap.appendChild(mapEl);
+  afterEl.after(wrap);
+
+  const map = L.map(mapEl.id, { zoomControl: true, scrollWheelZoom: false });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom: 18,
+  }).addTo(map);
+
+  const points = [];
+
+  // User location marker
+  if (userZip) {
+    const pos = await geocode(userZip + ', USA');
+    if (pos) {
+      points.push(pos);
+      L.marker(pos, { icon: userIcon })
+        .addTo(map)
+        .bindPopup(`<b>Your location</b><br>ZIP: ${userZip}`);
+    }
+  }
+
+  // Facility markers
+  for (const f of facilities) {
+    const pos = await geocode(f.address);
+    if (!pos) continue;
+    points.push(pos);
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(f.name + ' ' + f.address)}`;
+    L.marker(pos, { icon: facilityIcon })
+      .addTo(map)
+      .bindPopup(
+        `<b>${f.name}</b><br>${f.address}<br>${f.phone || ''}<br>` +
+        `<a href="${mapsUrl}" target="_blank" rel="noopener">Open in Google Maps ↗</a>`
+      );
+  }
+
+  if (points.length > 0) {
+    map.fitBounds(points, { padding: [24, 24] });
+  } else {
+    map.setView([37.0902, -95.7129], 4); // fallback: continental US
+  }
+
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 function appendTyping() {
@@ -109,8 +184,11 @@ async function sendMessage(text) {
     });
     const data = await res.json();
     typing.remove();
-    appendMessage('assistant', data.reply);
+    const msgEl = appendMessage('assistant', data.reply);
     chatHistory.push({ role: 'assistant', content: data.reply });
+    if (data.facilities && data.facilities.length > 0) {
+      renderFacilityMap(msgEl, data.facilities, data.user_location);
+    }
   } catch {
     typing.remove();
     appendMessage('assistant', 'Sorry, something went wrong. Please try again.');
