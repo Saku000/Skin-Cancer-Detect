@@ -101,126 +101,107 @@ header {
   border-radius: 100px;
 }
 
-/* ─── Settings Button ──────────────────────────────────── */
+/* ─── Settings ──────────────────────────────────────────── */
+.settings-wrap {
+  position: relative;
+  margin-left: 10px;
+  flex-shrink: 0;
+}
+
 .settings-btn {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: rgba(255,255,255,0.05);
   border: 1px solid var(--border);
   color: var(--text-muted);
-  font-size: 17px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  margin-left: 8px;
   transition: background var(--transition), border-color var(--transition),
-              color var(--transition), transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+              color var(--transition), transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
 }
 
 .settings-btn:hover {
   background: var(--teal-dim);
-  border-color: rgba(0,196,210,0.4);
+  border-color: rgba(0,196,210,0.35);
   color: var(--teal);
-  transform: rotate(45deg);
+  transform: rotate(50deg);
 }
 
 .settings-btn.open {
   background: var(--teal-dim);
-  border-color: rgba(0,196,210,0.4);
+  border-color: rgba(0,196,210,0.35);
   color: var(--teal);
-  transform: rotate(90deg);
+  transform: rotate(110deg);
 }
 
-/* ─── Settings Backdrop ─────────────────────────────────── */
-.settings-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  backdrop-filter: blur(0px);
+/* ─── Settings Dropdown Panel ───────────────────────────── */
+.settings-panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 280px;
+  background: rgba(8,14,26,0.98);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 4px 20px rgba(0,0,0,0.4);
+  backdrop-filter: blur(20px);
+  z-index: 200;
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
   pointer-events: none;
-  transition: background 0.25s ease, backdrop-filter 0.25s ease;
+  transition: opacity 0.2s ease,
+              transform 0.28s cubic-bezier(0.34,1.56,0.64,1);
 }
 
-.settings-backdrop.visible {
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(6px);
+/* Arrow pointing up to the button */
+.settings-panel::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: 11px;
+  width: 10px;
+  height: 10px;
+  background: rgba(8,14,26,0.98);
+  border-top: 1px solid rgba(255,255,255,0.1);
+  border-left: 1px solid rgba(255,255,255,0.1);
+  transform: rotate(45deg);
+  border-radius: 2px 0 0 0;
+}
+
+.settings-panel.open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
   pointer-events: all;
 }
 
-/* ─── Settings Modal ────────────────────────────────────── */
-.settings-modal {
-  width: 380px;
-  max-width: calc(100vw - 48px);
-  background: rgba(10,16,30,0.97);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: var(--radius);
-  box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
-  backdrop-filter: blur(24px);
-  opacity: 0;
-  transform: scale(0.88) translateY(-20px);
-  transition: opacity 0.3s cubic-bezier(0.34,1.56,0.64,1),
-              transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
-}
-
-.settings-backdrop.visible .settings-modal {
-  opacity: 1;
-  transform: scale(1) translateY(0);
-}
-
-.settings-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px 18px;
+.sp-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  padding: 16px 18px 10px;
   border-bottom: 1px solid var(--border);
 }
 
-.settings-header > span {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: 0.1px;
-}
-
-.settings-close {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255,255,255,0.06);
-  color: var(--text-muted);
-  font-size: 13px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: var(--transition);
-}
-
-.settings-close:hover { background: rgba(255,255,255,0.12); color: var(--text); }
-
-.settings-body {
-  padding: 28px 24px;
+.sp-body {
+  padding: 18px;
 }
 
 .setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
 }
 
 .setting-label {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .setting-label > span:first-child {
@@ -230,7 +211,7 @@ header {
 }
 
 .setting-desc {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--text-muted);
   line-height: 1.5;
 }
@@ -246,12 +227,12 @@ header {
 }
 
 .stepper-btn {
-  width: 38px;
-  height: 44px;
+  width: 32px;
+  height: 38px;
   background: rgba(255,255,255,0.04);
   border: none;
   color: var(--text-muted);
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1;
   cursor: pointer;
   transition: var(--transition);
@@ -260,54 +241,48 @@ header {
   justify-content: center;
 }
 
-.stepper-btn:hover {
-  background: var(--teal-dim);
-  color: var(--teal);
-}
-
-.stepper-btn:active { transform: scale(0.9); }
+.stepper-btn:hover { background: var(--teal-dim); color: var(--teal); }
+.stepper-btn:active { transform: scale(0.88); }
 
 .stepper-val {
-  width: 48px;
-  height: 44px;
+  width: 40px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   color: var(--teal);
   background: rgba(0,196,210,0.06);
   border-left: 1px solid var(--border);
   border-right: 1px solid var(--border);
   letter-spacing: -0.5px;
-  transition: transform 0.15s ease;
+  transition: transform 0.12s ease;
 }
 
-.stepper-val.bump {
-  transform: scale(1.3);
-}
+.stepper-val.bump { transform: scale(1.25); }
 
-.settings-footer {
-  padding: 0 24px 22px;
+.sp-footer {
+  padding: 0 18px 16px;
 }
 
 .btn-apply {
   width: 100%;
-  padding: 11px;
+  padding: 9px;
   background: linear-gradient(135deg, var(--teal), #0070c0);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   color: #fff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.3px;
   cursor: pointer;
   transition: var(--transition);
-  box-shadow: 0 4px 16px rgba(0,196,210,0.25);
+  box-shadow: 0 3px 12px rgba(0,196,210,0.2);
 }
 
 .btn-apply:hover { opacity: 0.88; }
-.btn-apply:active { transform: scale(0.98); }
+.btn-apply:active { transform: scale(0.97); }
 
 /* ─── Upload Zone ───────────────────────────────────────── */
 .upload-zone {

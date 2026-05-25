@@ -38,38 +38,45 @@ let selectedFiles = [];
 let nRuns = 3;
 
 /* ── Settings ── */
-const settingsBtn      = document.getElementById('settingsBtn');
-const settingsBackdrop = document.getElementById('settingsBackdrop');
-const settingsClose    = document.getElementById('settingsClose');
-const stepperMinus     = document.getElementById('stepperMinus');
-const stepperPlus      = document.getElementById('stepperPlus');
-const stepperVal       = document.getElementById('stepperVal');
-const applyBtn         = document.getElementById('applyBtn');
+const settingsBtn  = document.getElementById('settingsBtn');
+const settingsPanel = document.getElementById('settingsPanel');
+const stepperMinus = document.getElementById('stepperMinus');
+const stepperPlus  = document.getElementById('stepperPlus');
+const stepperVal   = document.getElementById('stepperVal');
+const applyBtn     = document.getElementById('applyBtn');
 
 let pendingRuns = nRuns;
+let settingsOpen = false;
 
 function openSettings() {
   pendingRuns = nRuns;
   stepperVal.textContent = pendingRuns;
-  settingsBackdrop.classList.add('visible');
+  settingsPanel.classList.add('open');
   settingsBtn.classList.add('open');
+  settingsOpen = true;
 }
 
 function closeSettings() {
-  settingsBackdrop.classList.remove('visible');
+  settingsPanel.classList.remove('open');
   settingsBtn.classList.remove('open');
+  settingsOpen = false;
 }
 
 function bumpVal() {
   stepperVal.classList.remove('bump');
   void stepperVal.offsetWidth;
   stepperVal.classList.add('bump');
-  setTimeout(() => stepperVal.classList.remove('bump'), 150);
+  setTimeout(() => stepperVal.classList.remove('bump'), 120);
 }
 
-settingsBtn.addEventListener('click', openSettings);
-settingsClose.addEventListener('click', closeSettings);
-settingsBackdrop.addEventListener('click', e => { if (e.target === settingsBackdrop) closeSettings(); });
+settingsBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  settingsOpen ? closeSettings() : openSettings();
+});
+
+document.addEventListener('click', e => {
+  if (settingsOpen && !settingsPanel.contains(e.target)) closeSettings();
+});
 
 stepperMinus.addEventListener('click', () => {
   if (pendingRuns > 1) { pendingRuns--; stepperVal.textContent = pendingRuns; bumpVal(); }
@@ -81,7 +88,7 @@ stepperPlus.addEventListener('click', () => {
 applyBtn.addEventListener('click', () => {
   nRuns = pendingRuns;
   applyBtn.textContent = '✓ Applied';
-  setTimeout(() => { applyBtn.textContent = 'Apply'; closeSettings(); }, 600);
+  setTimeout(() => { applyBtn.textContent = 'Apply'; closeSettings(); }, 700);
 });
 
 /* ── Drag & Drop ── */

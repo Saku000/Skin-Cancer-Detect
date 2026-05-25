@@ -19,34 +19,40 @@
         <p>AI-powered dermatology analysis · Gemini Vision</p>
       </div>
       <span class="badge">Research Tool</span>
-      <button class="settings-btn" id="settingsBtn" title="Settings">⚙</button>
-    </header>
 
-    <!-- Settings Modal -->
-    <div class="settings-backdrop" id="settingsBackdrop">
-      <div class="settings-modal" id="settingsModal">
-        <div class="settings-header">
-          <span>Settings</span>
-          <button class="settings-close" id="settingsClose">✕</button>
-        </div>
-        <div class="settings-body">
-          <div class="setting-row">
-            <div class="setting-label">
-              <span>API Runs per Image</span>
-              <span class="setting-desc">Each run is one Gemini call.<br>Higher = more stable, slower &amp; costlier.</span>
-            </div>
-            <div class="stepper">
-              <button class="stepper-btn" id="stepperMinus">−</button>
-              <span class="stepper-val" id="stepperVal">3</span>
-              <button class="stepper-btn" id="stepperPlus">＋</button>
+      <div class="settings-wrap">
+        <button class="settings-btn" id="settingsBtn" title="Settings">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="3" y1="6"  x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+            <circle cx="7"  cy="6"  r="2.5" fill="currentColor" stroke="none"/>
+            <circle cx="15" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+            <circle cx="9"  cy="18" r="2.5" fill="currentColor" stroke="none"/>
+          </svg>
+        </button>
+
+        <div class="settings-panel" id="settingsPanel">
+          <div class="sp-title">Settings</div>
+          <div class="sp-body">
+            <div class="setting-row">
+              <div class="setting-label">
+                <span>Runs per Image</span>
+                <span class="setting-desc">Each run = one Gemini API call.<br>Higher → more stable, slower &amp; costlier.</span>
+              </div>
+              <div class="stepper">
+                <button class="stepper-btn" id="stepperMinus">−</button>
+                <span class="stepper-val" id="stepperVal">3</span>
+                <button class="stepper-btn" id="stepperPlus">＋</button>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="settings-footer">
-          <button class="btn-apply" id="applyBtn">Apply</button>
+          <div class="sp-footer">
+            <button class="btn-apply" id="applyBtn">Apply</button>
+          </div>
         </div>
       </div>
-    </div>
+    </header>
 
     <!-- Upload Zone -->
     <div class="upload-zone" id="uploadZone">
@@ -83,6 +89,6 @@
 
   </div>
 
-  <script src="script.js?v=5"></script>
+  <script src="script.js?v=6"></script>
 </body>
 </html>
