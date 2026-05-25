@@ -61,22 +61,50 @@ function appendMessage(role, content) {
 }
 
 /* ── Facility Map ── */
-function renderFacilityMap(facilities, userZip) {
+async function renderFacilityMap(facilities, userZip) {
   const wrap = document.createElement('div');
   wrap.className = 'chat-map-wrap';
 
-  // Google Maps iframe — search for dermatology near the user's zip
-  const searchQuery = userZip
-    ? `dermatology clinics near ${userZip}`
-    : facilities[0].address;
-  const iframe = document.createElement('iframe');
-  iframe.src = `https://maps.google.com/maps?q=${encodeURIComponent(searchQuery)}&output=embed&z=13`;
-  iframe.style.cssText = 'width:100%;height:220px;border:0;display:block;';
-  iframe.setAttribute('allowfullscreen', '');
-  iframe.setAttribute('loading', 'lazy');
-  wrap.appendChild(iframe);
+  // Loading placeholder
+  const loader = document.createElement('div');
+  loader.className = 'map-loading';
+  loader.textContent = 'Loading map...';
+  wrap.appendChild(loader);
+  chatMessages.appendChild(wrap);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 
-  // Clickable facility chips below the map
+  // Geocode the zipcode with Nominatim to get map center coordinates
+  let lat = null, lon = null;
+  const geoQuery = userZip ? `${userZip}, USA` : facilities[0].address;
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(geoQuery)}`
+    );
+    const data = await res.json();
+    if (data[0]) { lat = parseFloat(data[0].lat); lon = parseFloat(data[0].lon); }
+  } catch { /* network unavailable */ }
+
+  wrap.removeChild(loader);
+
+  if (lat !== null) {
+    // OpenStreetMap embed — free, no API key required
+    const d = 0.04; // ~4km radius
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.openstreetmap.org/export/embed.html` +
+      `?bbox=${lon-d},${lat-d},${lon+d},${lat+d}&layer=mapnik&marker=${lat},${lon}`;
+    iframe.style.cssText = 'width:100%;height:220px;border:0;display:block;';
+    iframe.setAttribute('allowfullscreen', '');
+    iframe.setAttribute('loading', 'lazy');
+    wrap.appendChild(iframe);
+  } else {
+    // Fallback: show a note if geocoding failed
+    const note = document.createElement('div');
+    note.className = 'map-loading';
+    note.textContent = 'Map unavailable — click links below to open in Google Maps.';
+    wrap.appendChild(note);
+  }
+
+  // Clickable facility links below the map
   const links = document.createElement('div');
   links.className = 'map-links';
   facilities.forEach((f, i) => {
@@ -85,12 +113,11 @@ function renderFacilityMap(facilities, userZip) {
     a.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(f.name + ' ' + f.address)}`;
     a.target = '_blank';
     a.rel = 'noopener';
-    a.textContent = `${i + 1}. ${f.name}`;
+    a.textContent = `${i + 1}. ${f.name} ↗`;
     links.appendChild(a);
   });
   wrap.appendChild(links);
 
-  chatMessages.appendChild(wrap);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
