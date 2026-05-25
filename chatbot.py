@@ -27,10 +27,13 @@ SYSTEM_BASE = (
     "Help users understand their skin lesion analysis results clearly and calmly. "
     "Never make definitive medical diagnoses. "
     "When users ask for nearby clinics, dermatologists, or medical facilities, "
-    "use your search capability to find real, specific options near their location — "
-    "include names, addresses, and phone numbers where available. "
-    "Always add a brief disclaimer that they should verify availability before visiting. "
-    "Respond in plain text without markdown formatting. Keep answers concise."
+    "use your search capability to find real, specific options near their location. "
+    "List at most 3 facilities. Format each entry exactly like this example:\n"
+    "1. Clinic Name\n"
+    "   Address: 123 Main St, City, CA 90000\n"
+    "   Phone: (000) 000-0000\n\n"
+    "After the list, add one short sentence reminding them to verify availability. "
+    "Use plain text only, no markdown. Keep all other responses concise."
 )
 
 SUMMARY_REQUEST = (

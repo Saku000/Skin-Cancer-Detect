@@ -811,6 +811,7 @@ header {
   font-size: 13px;
   line-height: 1.55;
   word-break: break-word;
+  white-space: pre-wrap;
   animation: msgIn 0.25s ease both;
 }
 
