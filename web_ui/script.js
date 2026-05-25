@@ -61,63 +61,60 @@ function appendMessage(role, content) {
 }
 
 /* ── Facility Map ── */
-const facilityIcon = L.divIcon({
-  className: '', html: '<div class="map-marker facility"></div>',
-  iconSize: [14, 14], iconAnchor: [7, 7], popupAnchor: [0, -8],
-});
-const userIcon = L.divIcon({
-  className: '', html: '<div class="map-marker user"></div>',
-  iconSize: [14, 14], iconAnchor: [7, 7], popupAnchor: [0, -8],
-});
-
 async function geocode(query) {
-  await new Promise(r => setTimeout(r, 350)); // Nominatim rate limit
+  await new Promise(r => setTimeout(r, 400));
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
-      { headers: { 'User-Agent': 'SkinLesionDetect/1.0' } }
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`
     );
     const data = await res.json();
     if (data[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-  } catch { /* ignore geocoding failures */ }
+  } catch { /* ignore */ }
   return null;
 }
 
 async function renderFacilityMap(afterEl, facilities, userZip) {
+  if (typeof L === 'undefined') { console.warn('[map] Leaflet not loaded'); return; }
+
   const wrap = document.createElement('div');
   wrap.className = 'chat-map-wrap';
   const mapEl = document.createElement('div');
   mapEl.className = 'chat-map';
-  mapEl.id = 'map-' + Date.now();
+  const mapId = 'map-' + Date.now();
+  mapEl.id = mapId;
   wrap.appendChild(mapEl);
   afterEl.after(wrap);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 
-  const map = L.map(mapEl.id, { zoomControl: true, scrollWheelZoom: false });
+  // Wait for the container to be laid out before Leaflet measures it
+  await new Promise(r => setTimeout(r, 80));
+
+  const map = L.map(mapId, { scrollWheelZoom: false, zoomControl: true });
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    attribution: '© <a href="https://openstreetmap.org" target="_blank">OpenStreetMap</a>',
     maxZoom: 18,
   }).addTo(map);
+  map.setView([34.0, -118.0], 10); // placeholder while geocoding
+  map.invalidateSize();
 
   const points = [];
 
-  // User location marker
   if (userZip) {
     const pos = await geocode(userZip + ', USA');
     if (pos) {
       points.push(pos);
-      L.marker(pos, { icon: userIcon })
+      L.circleMarker(pos, { radius: 9, color: '#fff', weight: 2, fillColor: '#fbbf24', fillOpacity: 1 })
         .addTo(map)
         .bindPopup(`<b>Your location</b><br>ZIP: ${userZip}`);
     }
   }
 
-  // Facility markers
   for (const f of facilities) {
     const pos = await geocode(f.address);
     if (!pos) continue;
     points.push(pos);
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(f.name + ' ' + f.address)}`;
-    L.marker(pos, { icon: facilityIcon })
+    L.circleMarker(pos, { radius: 9, color: '#fff', weight: 2, fillColor: '#00c4d2', fillOpacity: 1 })
       .addTo(map)
       .bindPopup(
         `<b>${f.name}</b><br>${f.address}<br>${f.phone || ''}<br>` +
@@ -126,11 +123,9 @@ async function renderFacilityMap(afterEl, facilities, userZip) {
   }
 
   if (points.length > 0) {
-    map.fitBounds(points, { padding: [24, 24] });
-  } else {
-    map.setView([37.0902, -95.7129], 4); // fallback: continental US
+    map.fitBounds(points, { padding: [30, 30] });
   }
-
+  map.invalidateSize();
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
