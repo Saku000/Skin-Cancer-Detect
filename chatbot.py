@@ -30,6 +30,8 @@ SYSTEM_BASE = (
     "Respond in plain text without markdown formatting. Keep answers concise."
 )
 
+SYSTEM_ACK = "Understood. I will follow these guidelines and help users understand their results."
+
 SUMMARY_REQUEST = (
     "Please provide a brief, friendly summary of these skin analysis results. "
     "Include what was detected, the overall risk level, and what the user should do next. "
@@ -39,51 +41,74 @@ SUMMARY_REQUEST = (
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _build_system_prompt(results: list = None) -> str:
-    prompt = SYSTEM_BASE
+def _build_context(results: list = None) -> str:
+    """Builds the system context string including current analysis results."""
+    ctx = SYSTEM_BASE
     if results:
-        prompt += "\n\nCurrent analysis results:\n"
+        ctx += "\n\nCurrent analysis results:\n"
         for r in results:
             if "error" in r:
-                prompt += f"- {r.get('filename', '?')}: analysis failed\n"
+                ctx += f"- {r.get('filename', '?')}: analysis failed\n"
                 continue
             top        = r.get("top_prediction", "?")
-            risk       = "HIGH RISK" if r.get("is_high_risk") else "low risk"
+            risk_level = "requires urgent attention" if r.get("is_high_risk") else "appears low risk"
             ctotal     = r.get("cancer_total", 0)
             cancer_str = ", ".join(f"{k}={v}%" for k, v in r.get("cancer", {}).items())
-            prompt += (
-                f"- {r.get('filename', '?')}: top prediction={top}, {risk}, "
-                f"cancer total={ctotal}%, cancer probs=[{cancer_str}]\n"
+            ctx += (
+                f"- {r.get('filename', '?')}: top={top}, {risk_level}, "
+                f"malignancy score={ctotal}%, breakdown=[{cancer_str}]\n"
             )
     else:
-        prompt += "\n\nNo analysis results are available yet."
-    return prompt
+        ctx += "\n\nNo analysis results are available yet."
+    return ctx
 
 
-def _make_config(system: str) -> types.GenerateContentConfig:
-    return types.GenerateContentConfig(
-        system_instruction=system,
-        temperature=TEMPERATURE,
-    )
+def _context_pair(results: list = None) -> list:
+    """Returns [user_context_msg, model_ack_msg] to inject context without system_instruction."""
+    ctx = _build_context(results)
+    return [
+        types.Content(role="user",  parts=[types.Part(text=ctx)]),
+        types.Content(role="model", parts=[types.Part(text=SYSTEM_ACK)]),
+    ]
+
+
+def _extract_text(response) -> str:
+    """Safely extracts text from a Gemini response, logging issues if empty."""
+    if response.text:
+        return response.text
+    try:
+        text = response.candidates[0].content.parts[0].text
+        if text:
+            return text
+    except Exception:
+        pass
+    try:
+        finish = response.candidates[0].finish_reason
+        safety = response.candidates[0].safety_ratings
+        print(f"[chatbot] empty response — finish_reason={finish}, safety={safety}")
+    except Exception as e:
+        print(f"[chatbot] could not inspect response: {e}")
+    return ""
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def generate_summary(results: list) -> str:
     """One-shot summary of analysis results shown automatically after each scan."""
-    system = _build_system_prompt(results)
+    contents = _context_pair(results) + [
+        types.Content(role="user", parts=[types.Part(text=SUMMARY_REQUEST)]),
+    ]
     response = _client.models.generate_content(
         model=MODEL,
-        contents=[types.Content(role="user", parts=[types.Part(text=SUMMARY_REQUEST)])],
-        config=_make_config(system),
+        contents=contents,
+        config=types.GenerateContentConfig(temperature=TEMPERATURE),
     )
-    return response.text
+    return _extract_text(response)
 
 
 def chat_reply(message: str, history: list, results: list = None) -> str:
     """Multi-turn chat response with full conversation history and analysis context."""
-    system   = _build_system_prompt(results)
-    contents = []
+    contents = _context_pair(results)
     for msg in history:
         role = "user" if msg["role"] == "user" else "model"
         contents.append(types.Content(role=role, parts=[types.Part(text=msg["content"])]))
@@ -91,6 +116,6 @@ def chat_reply(message: str, history: list, results: list = None) -> str:
     response = _client.models.generate_content(
         model=MODEL,
         contents=contents,
-        config=_make_config(system),
+        config=types.GenerateContentConfig(temperature=TEMPERATURE),
     )
-    return response.text
+    return _extract_text(response)
