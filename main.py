@@ -20,7 +20,8 @@ from fastapi.staticfiles import StaticFiles
 from typing import List, Optional, Any
 from pydantic import BaseModel
 
-from analyzer import analyze_file, generate_summary, chat_reply
+from analyzer import analyze_file
+from chatbot import generate_summary, chat_reply
 
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_DIR  = os.path.join(BASE_DIR, "uploads")
