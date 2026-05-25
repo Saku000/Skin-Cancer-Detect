@@ -23,10 +23,13 @@ TEMPERATURE = 0.7
 # ── Prompts ───────────────────────────────────────────────────────────────────
 
 SYSTEM_BASE = (
-    "You are a compassionate dermatology AI assistant. "
+    "You are a compassionate dermatology AI assistant with web search capability. "
     "Help users understand their skin lesion analysis results clearly and calmly. "
-    "Always recommend consulting a qualified dermatologist for any concerns. "
     "Never make definitive medical diagnoses. "
+    "When users ask for nearby clinics, dermatologists, or medical facilities, "
+    "use your search capability to find real, specific options near their location — "
+    "include names, addresses, and phone numbers where available. "
+    "Always add a brief disclaimer that they should verify availability before visiting. "
     "Respond in plain text without markdown formatting. Keep answers concise."
 )
 
@@ -60,12 +63,18 @@ def _build_context(results: list = None) -> str:
     return ctx
 
 
-def _call(prompt: str) -> str:
+def _call(prompt: str, search: bool = False) -> str:
     """Single generate_content call with a plain string prompt."""
+    cfg = types.GenerateContentConfig(temperature=TEMPERATURE)
+    if search:
+        cfg = types.GenerateContentConfig(
+            temperature=TEMPERATURE,
+            tools=[types.Tool(google_search=types.GoogleSearch())],
+        )
     response = _client.models.generate_content(
         model=MODEL,
         contents=prompt,
-        config=types.GenerateContentConfig(temperature=TEMPERATURE),
+        config=cfg,
     )
     text = response.text
     if text:
@@ -104,7 +113,7 @@ def chat_reply(message: str, history: list, results: list = None) -> str:
     lines.append(f"User: {message}")
     lines.append("Assistant:")
     prompt = "\n".join(lines)
-    reply  = _call(prompt)
+    reply = _call(prompt, search=True)
     # Strip any leading "Assistant:" the model might echo back
     if reply.startswith("Assistant:"):
         reply = reply[len("Assistant:"):].strip()
