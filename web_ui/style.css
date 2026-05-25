@@ -490,6 +490,12 @@ header {
   transform: none;
 }
 
+.btn-analyse.btn-cancel {
+  background: linear-gradient(135deg, #c0392b, #922b21);
+  box-shadow: 0 4px 24px rgba(192,57,43,0.35);
+  cursor: pointer;
+}
+
 /* ─── Loading ───────────────────────────────────────────── */
 .spinner {
   display: inline-block;

@@ -38,6 +38,8 @@ let selectedFiles = [];
 let nRuns = 3;
 let chatHistory = [];
 let currentResults = null;
+let isAnalysing = false;
+let abortController = null;
 
 /* ── Chat ── */
 const chatMessages    = document.getElementById('chatMessages');
@@ -219,6 +221,7 @@ addMoreBtn.addEventListener('click', e => {
 
 clearBtn.addEventListener('click', async e => {
   e.stopPropagation();
+  if (isAnalysing) abortController?.abort();
   selectedFiles = [];
   renderPreviews();
   resultsSection.style.display = 'none';
@@ -275,25 +278,43 @@ function renderPreviews() {
 
 
 /* ── Analyse ── */
+function resetAnalyseBtn() {
+  isAnalysing = false;
+  abortController = null;
+  analyseBtn.disabled = false;
+  analyseBtn.className = 'btn-analyse';
+  analyseBtn.innerHTML = 'Analyse Images';
+}
+
 analyseBtn.addEventListener('click', async () => {
+  // Cancel if already running
+  if (isAnalysing) {
+    abortController?.abort();
+    return;
+  }
+
   if (!selectedFiles.length) return;
 
-  analyseBtn.disabled = true;
-  analyseBtn.innerHTML = '<span class="spinner"></span> Uploading...';
+  isAnalysing = true;
+  abortController = new AbortController();
+  const signal = abortController.signal;
+
+  analyseBtn.className = 'btn-analyse btn-cancel';
+  analyseBtn.innerHTML = '<span class="spinner"></span> Uploading... &nbsp;✕ Cancel';
   resultsSection.style.display = 'none';
   resultsContainer.innerHTML = '';
 
   try {
     // 1. Clear old uploads, then upload current files
-    await fetch(`${API}/clear`, { method: 'DELETE' });
+    await fetch(`${API}/clear`, { method: 'DELETE', signal });
     const formData = new FormData();
     selectedFiles.forEach(f => formData.append('files', f));
-    const uploadRes = await fetch(`${API}/upload`, { method: 'POST', body: formData });
+    const uploadRes = await fetch(`${API}/upload`, { method: 'POST', body: formData, signal });
     if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.statusText}`);
 
     // 2. Analyse
-    analyseBtn.innerHTML = '<span class="spinner"></span> Analysing...';
-    const analyseRes = await fetch(`${API}/analyze?n_runs=${nRuns}`, { method: 'POST' });
+    analyseBtn.innerHTML = '<span class="spinner"></span> Analysing... &nbsp;✕ Cancel';
+    const analyseRes = await fetch(`${API}/analyze?n_runs=${nRuns}`, { method: 'POST', signal });
     if (!analyseRes.ok) throw new Error(`Analysis failed: ${analyseRes.statusText}`);
     const data = await analyseRes.json();
 
@@ -344,11 +365,14 @@ analyseBtn.addEventListener('click', async () => {
     generateSummary(data.results);
 
   } catch (err) {
-    resultsContainer.innerHTML = `<div class="error-card">⚠ ${err.message}</div>`;
-    resultsSection.style.display = 'block';
+    if (err.name === 'AbortError') {
+      // User cancelled — silently reset, keep existing results visible
+    } else {
+      resultsContainer.innerHTML = `<div class="error-card">⚠ ${err.message}</div>`;
+      resultsSection.style.display = 'block';
+    }
   } finally {
-    analyseBtn.disabled = false;
-    analyseBtn.innerHTML = 'Analyse Images';
+    resetAnalyseBtn();
   }
 });
 
