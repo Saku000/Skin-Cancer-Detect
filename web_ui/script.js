@@ -61,50 +61,11 @@ function appendMessage(role, content) {
 }
 
 /* ── Facility Map ── */
-async function renderFacilityMap(facilities, userZip) {
+function renderFacilityMap(facilities, userZip) {
   const wrap = document.createElement('div');
   wrap.className = 'chat-map-wrap';
 
-  // Loading placeholder
-  const loader = document.createElement('div');
-  loader.className = 'map-loading';
-  loader.textContent = 'Loading map...';
-  wrap.appendChild(loader);
-  chatMessages.appendChild(wrap);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-
-  // Geocode the zipcode with Nominatim to get map center coordinates
-  let lat = null, lon = null;
-  const geoQuery = userZip ? `${userZip}, USA` : facilities[0].address;
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(geoQuery)}`
-    );
-    const data = await res.json();
-    if (data[0]) { lat = parseFloat(data[0].lat); lon = parseFloat(data[0].lon); }
-  } catch { /* network unavailable */ }
-
-  wrap.removeChild(loader);
-
-  if (lat !== null) {
-    // OpenStreetMap embed — free, no API key required
-    const d = 0.04; // ~4km radius
-    const iframe = document.createElement('iframe');
-    iframe.src = `https://www.openstreetmap.org/export/embed.html` +
-      `?bbox=${lon-d},${lat-d},${lon+d},${lat+d}&layer=mapnik&marker=${lat},${lon}`;
-    iframe.style.cssText = 'width:100%;height:220px;border:0;display:block;';
-    iframe.setAttribute('allowfullscreen', '');
-    iframe.setAttribute('loading', 'lazy');
-    wrap.appendChild(iframe);
-  } else {
-    // Fallback: show a note if geocoding failed
-    const note = document.createElement('div');
-    note.className = 'map-loading';
-    note.textContent = 'Map unavailable — click links below to open in Google Maps.';
-    wrap.appendChild(note);
-  }
-
-  // Clickable facility links below the map
+  // 1. Facility link buttons — rendered synchronously so they always appear
   const links = document.createElement('div');
   links.className = 'map-links';
   facilities.forEach((f, i) => {
@@ -118,7 +79,40 @@ async function renderFacilityMap(facilities, userZip) {
   });
   wrap.appendChild(links);
 
+  // 2. Map placeholder — will be filled in asynchronously
+  const mapSlot = document.createElement('div');
+  mapSlot.className = 'map-loading';
+  mapSlot.textContent = 'Loading map...';
+  wrap.insertBefore(mapSlot, links); // map goes above the links
+
+  chatMessages.appendChild(wrap);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // 3. Async: geocode zip → build OSM iframe
+  (async () => {
+    let lat = null, lon = null;
+    const q = userZip ? `${userZip}, USA` : facilities[0].address;
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`
+      );
+      const d = await r.json();
+      if (d[0]) { lat = parseFloat(d[0].lat); lon = parseFloat(d[0].lon); }
+    } catch (e) { console.warn('[map] geocode failed:', e); }
+
+    if (lat !== null) {
+      const delta = 0.04;
+      const iframe = document.createElement('iframe');
+      iframe.src = `https://www.openstreetmap.org/export/embed.html` +
+        `?bbox=${lon-delta},${lat-delta},${lon+delta},${lat+delta}&layer=mapnik&marker=${lat},${lon}`;
+      iframe.style.cssText = 'width:100%;height:220px;border:0;display:block;';
+      iframe.setAttribute('allowfullscreen', '');
+      mapSlot.replaceWith(iframe);
+    } else {
+      mapSlot.textContent = 'Map unavailable — use links below to open in Google Maps.';
+    }
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  })();
 }
 
 function appendTyping() {
