@@ -17,7 +17,7 @@ _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-MODEL       = "gemini-2.0-flash"
+MODEL       = "gemini-2.5-flash"
 TEMPERATURE = 0.7
 
 # ── Prompts ───────────────────────────────────────────────────────────────────
@@ -30,8 +30,6 @@ SYSTEM_BASE = (
     "Respond in plain text without markdown formatting. Keep answers concise."
 )
 
-SYSTEM_ACK = "Understood. I will follow these guidelines and help users understand their results."
-
 SUMMARY_REQUEST = (
     "Please provide a brief, friendly summary of these skin analysis results. "
     "Include what was detected, the overall risk level, and what the user should do next. "
@@ -42,7 +40,6 @@ SUMMARY_REQUEST = (
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _build_context(results: list = None) -> str:
-    """Builds the system context string including current analysis results."""
     ctx = SYSTEM_BASE
     if results:
         ctx += "\n\nCurrent analysis results:\n"
@@ -63,31 +60,28 @@ def _build_context(results: list = None) -> str:
     return ctx
 
 
-def _context_pair(results: list = None) -> list:
-    """Returns [user_context_msg, model_ack_msg] to inject context without system_instruction."""
-    ctx = _build_context(results)
-    return [
-        types.Content(role="user",  parts=[types.Part(text=ctx)]),
-        types.Content(role="model", parts=[types.Part(text=SYSTEM_ACK)]),
-    ]
+def _call(prompt: str) -> str:
+    """Single generate_content call with a plain string prompt."""
+    response = _client.models.generate_content(
+        model=MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(temperature=TEMPERATURE),
+    )
+    text = response.text
+    if text:
+        return text
 
-
-def _extract_text(response) -> str:
-    """Safely extracts text from a Gemini response, logging issues if empty."""
-    if response.text:
-        return response.text
+    # Log why it's empty
     try:
-        text = response.candidates[0].content.parts[0].text
-        if text:
-            return text
-    except Exception:
-        pass
-    try:
-        finish = response.candidates[0].finish_reason
-        safety = response.candidates[0].safety_ratings
-        print(f"[chatbot] empty response — finish_reason={finish}, safety={safety}")
+        candidate = response.candidates[0]
+        print(f"[chatbot] finish_reason={candidate.finish_reason}")
+        print(f"[chatbot] safety_ratings={candidate.safety_ratings}")
+        # Try extracting text directly from parts
+        part_text = candidate.content.parts[0].text
+        if part_text:
+            return part_text
     except Exception as e:
-        print(f"[chatbot] could not inspect response: {e}")
+        print(f"[chatbot] inspection error: {e}")
     return ""
 
 
@@ -95,27 +89,23 @@ def _extract_text(response) -> str:
 
 def generate_summary(results: list) -> str:
     """One-shot summary of analysis results shown automatically after each scan."""
-    contents = _context_pair(results) + [
-        types.Content(role="user", parts=[types.Part(text=SUMMARY_REQUEST)]),
-    ]
-    response = _client.models.generate_content(
-        model=MODEL,
-        contents=contents,
-        config=types.GenerateContentConfig(temperature=TEMPERATURE),
-    )
-    return _extract_text(response)
+    ctx    = _build_context(results)
+    prompt = f"{ctx}\n\n---\n{SUMMARY_REQUEST}"
+    return _call(prompt)
 
 
 def chat_reply(message: str, history: list, results: list = None) -> str:
-    """Multi-turn chat response with full conversation history and analysis context."""
-    contents = _context_pair(results)
+    """Multi-turn chat response. History is formatted as plain text in the prompt."""
+    ctx   = _build_context(results)
+    lines = [ctx, "---"]
     for msg in history:
-        role = "user" if msg["role"] == "user" else "model"
-        contents.append(types.Content(role=role, parts=[types.Part(text=msg["content"])]))
-    contents.append(types.Content(role="user", parts=[types.Part(text=message)]))
-    response = _client.models.generate_content(
-        model=MODEL,
-        contents=contents,
-        config=types.GenerateContentConfig(temperature=TEMPERATURE),
-    )
-    return _extract_text(response)
+        role = "User" if msg["role"] == "user" else "Assistant"
+        lines.append(f"{role}: {msg['content']}")
+    lines.append(f"User: {message}")
+    lines.append("Assistant:")
+    prompt = "\n".join(lines)
+    reply  = _call(prompt)
+    # Strip any leading "Assistant:" the model might echo back
+    if reply.startswith("Assistant:"):
+        reply = reply[len("Assistant:"):].strip()
+    return reply

@@ -76,12 +76,16 @@ async function generateSummary(results) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ results }),
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     typing.remove();
-    appendMessage('assistant', data.reply);
-    // Not stored in chatHistory — Gemini requires history to start with a user message
-  } catch {
+    if (data.reply) {
+      appendMessage('assistant', data.reply);
+    }
+    // Not stored in chatHistory — history must start with a user message
+  } catch (e) {
     typing.remove();
+    console.error('[chat summary]', e);
   }
 }
 
