@@ -36,6 +36,112 @@ const CLASS_LABEL = {
 
 let selectedFiles = [];
 let nRuns = 3;
+let chatHistory = [];
+let currentResults = null;
+
+/* ── Chat ── */
+const chatMessages    = document.getElementById('chatMessages');
+const chatInput       = document.getElementById('chatInput');
+const chatSendBtn     = document.getElementById('chatSendBtn');
+const chatClearBtn    = document.getElementById('chatClearBtn');
+
+function getChatPlaceholder() { return document.getElementById('chatPlaceholder'); }
+
+function appendMessage(role, content) {
+  const ph = getChatPlaceholder();
+  if (ph) ph.remove();
+  const msg = document.createElement('div');
+  msg.className = `msg ${role}`;
+  msg.textContent = content;
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function appendTyping() {
+  const ph = getChatPlaceholder();
+  if (ph) ph.remove();
+  const msg = document.createElement('div');
+  msg.className = 'msg assistant typing-indicator';
+  msg.innerHTML = '<span></span><span></span><span></span>';
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return msg;
+}
+
+async function generateSummary(results) {
+  const typing = appendTyping();
+  try {
+    const res = await fetch(`${API}/chat/summary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ results }),
+    });
+    const data = await res.json();
+    typing.remove();
+    appendMessage('assistant', data.reply);
+    // Not stored in chatHistory — Gemini requires history to start with a user message
+  } catch {
+    typing.remove();
+  }
+}
+
+async function sendMessage(text) {
+  if (!text.trim()) return;
+  appendMessage('user', text);
+  chatHistory.push({ role: 'user', content: text });
+  const typing = appendTyping();
+  chatSendBtn.disabled = true;
+  try {
+    const res = await fetch(`${API}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: text,
+        history: chatHistory.slice(0, -1),
+        results: currentResults,
+      }),
+    });
+    const data = await res.json();
+    typing.remove();
+    appendMessage('assistant', data.reply);
+    chatHistory.push({ role: 'assistant', content: data.reply });
+  } catch {
+    typing.remove();
+    appendMessage('assistant', 'Sorry, something went wrong. Please try again.');
+  } finally {
+    chatSendBtn.disabled = false;
+    chatInput.style.height = 'auto';
+  }
+}
+
+chatSendBtn.addEventListener('click', () => {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  chatInput.value = '';
+  sendMessage(text);
+});
+
+chatInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    chatSendBtn.click();
+  }
+});
+
+chatInput.addEventListener('input', () => {
+  chatInput.style.height = 'auto';
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 110) + 'px';
+});
+
+chatClearBtn.addEventListener('click', () => {
+  chatHistory = [];
+  chatMessages.innerHTML = '';
+  const ph = document.createElement('div');
+  ph.className = 'chat-placeholder';
+  ph.id = 'chatPlaceholder';
+  ph.innerHTML = '<div class="chat-placeholder-icon">💬</div><p>Run an analysis to get<br>AI insights and recommendations</p>';
+  chatMessages.appendChild(ph);
+});
 
 /* ── Settings ── */
 const settingsBtn  = document.getElementById('settingsBtn');
@@ -203,6 +309,10 @@ analyseBtn.addEventListener('click', async () => {
         el.style.width = el.dataset.pct + '%';
       });
     });
+
+    // Chat: update context and auto-generate summary
+    currentResults = data.results;
+    generateSummary(data.results);
 
   } catch (err) {
     resultsContainer.innerHTML = `<div class="error-card">⚠ ${err.message}</div>`;

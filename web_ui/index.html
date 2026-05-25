@@ -54,6 +54,9 @@
       </div>
     </header>
 
+    <div class="app-layout">
+    <div class="main-col">
+
     <!-- Upload Zone -->
     <div class="upload-zone" id="uploadZone">
       <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp" multiple />
@@ -87,8 +90,49 @@
       <div id="resultsContainer"></div>
     </div>
 
+    </div><!-- /main-col -->
+
+    <!-- Chat Panel -->
+    <div class="chat-col">
+      <div class="chat-panel">
+
+        <div class="chat-header">
+          <div class="chat-header-left">
+            <div class="chat-dot"></div>
+            <span>AI Assistant</span>
+          </div>
+          <button class="chat-clear-btn" id="chatClearBtn" title="Clear conversation">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+            </svg>
+            Clear
+          </button>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-placeholder" id="chatPlaceholder">
+            <div class="chat-placeholder-icon">💬</div>
+            <p>Run an analysis to get<br>AI insights and recommendations</p>
+          </div>
+        </div>
+
+        <div class="chat-input-wrap">
+          <textarea class="chat-input" id="chatInput"
+            placeholder="Ask about your results..." rows="1"></textarea>
+          <button class="chat-send-btn" id="chatSendBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div><!-- /chat-col -->
+
+    </div><!-- /app-layout -->
+
   </div>
 
-  <script src="script.js?v=7"></script>
+  <script src="script.js?v=8"></script>
 </body>
 </html>

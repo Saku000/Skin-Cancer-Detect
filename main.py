@@ -17,9 +17,10 @@ import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from typing import List
+from typing import List, Optional, Any
+from pydantic import BaseModel
 
-from analyzer import analyze_file
+from analyzer import analyze_file, generate_summary, chat_reply
 
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_DIR  = os.path.join(BASE_DIR, "uploads")
@@ -125,6 +126,32 @@ def analyze_one(filename: str):
         return analyze_file(path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    message: str
+    history: List[ChatMessage] = []
+    results: Optional[List[Any]] = None
+
+class SummaryRequest(BaseModel):
+    results: List[Any]
+
+
+@app.post("/chat")
+def chat(req: ChatRequest):
+    history = [{"role": m.role, "content": m.content} for m in req.history]
+    reply = chat_reply(req.message, history, req.results)
+    return {"reply": reply}
+
+
+@app.post("/chat/summary")
+def summary(req: SummaryRequest):
+    reply = generate_summary(req.results)
+    return {"reply": reply}
 
 
 @app.delete("/clear")

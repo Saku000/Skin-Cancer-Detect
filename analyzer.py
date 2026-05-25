@@ -16,6 +16,7 @@ _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 _config  = types.GenerateContentConfig(temperature=0)
 
 MODEL                = "gemini-2.5-pro"
+CHAT_MODEL           = "gemini-2.0-flash"
 N_RUNS               = 3      # 每张图跑几次，每个类别取最大概率
 CANCER_CLASSES       = {"MEL", "BCC", "AKIEC"}
 ALL_CLASSES          = [
@@ -126,3 +127,69 @@ def analyze_file(filepath: str, n_runs: int = N_RUNS) -> dict:
 
     agg_probs = _aggregate_max(runs)
     return _build_result(os.path.basename(filepath), agg_probs)
+
+
+# ── Chat ──────────────────────────────────────────────────────────
+
+def _build_chat_system(results: list = None) -> str:
+    prompt = (
+        "You are a compassionate dermatology AI assistant. "
+        "Help users understand their skin lesion analysis results clearly and calmly. "
+        "Always recommend consulting a qualified dermatologist for any concerns. "
+        "Never make definitive medical diagnoses. "
+        "Respond in plain text without markdown formatting. Keep answers concise."
+    )
+    if results:
+        prompt += "\n\nCurrent analysis results:\n"
+        for r in results:
+            if "error" in r:
+                prompt += f"- {r.get('filename','?')}: analysis failed\n"
+                continue
+            top   = r.get("top_prediction", "?")
+            risk  = "HIGH RISK" if r.get("is_high_risk") else "low risk"
+            ctotal = r.get("cancer_total", 0)
+            cancer_str = ", ".join(
+                f"{k}={v}%" for k, v in r.get("cancer", {}).items()
+            )
+            prompt += (
+                f"- {r.get('filename','?')}: top prediction={top}, {risk}, "
+                f"cancer total={ctotal}%, cancer probs=[{cancer_str}]\n"
+            )
+    else:
+        prompt += "\n\nNo analysis results are available yet."
+    return prompt
+
+
+def generate_summary(results: list) -> str:
+    """根据检测结果生成一段自动摘要和建议。"""
+    system = _build_chat_system(results)
+    user_msg = (
+        "Please provide a brief, friendly summary of these skin analysis results. "
+        "Include what was detected, the overall risk level, and what the user should do next. "
+        "Keep it to 3-4 sentences. Plain text only, no bullet points."
+    )
+    response = _client.models.generate_content(
+        model=CHAT_MODEL,
+        contents=[types.Content(role="user", parts=[types.Part(text=user_msg)])],
+        config=types.GenerateContentConfig(temperature=0.7),
+    )
+    return response.text
+
+
+def chat_reply(message: str, history: list, results: list = None) -> str:
+    """根据对话历史和当前检测结果生成回复。"""
+    system   = _build_chat_system(results)
+    contents = []
+    for msg in history:
+        role = "user" if msg["role"] == "user" else "model"
+        contents.append(types.Content(role=role, parts=[types.Part(text=msg["content"])]))
+    contents.append(types.Content(role="user", parts=[types.Part(text=message)]))
+    response = _client.models.generate_content(
+        model=CHAT_MODEL,
+        contents=contents,
+        config=types.GenerateContentConfig(
+            system_instruction=system,
+            temperature=0.7,
+        ),
+    )
+    return response.text
