@@ -16,6 +16,7 @@ _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 _config  = types.GenerateContentConfig(temperature=0)
 
 MODEL                = "gemini-2.5-pro"
+N_RUNS               = 3      # 每张图跑几次，每个类别取最大概率
 CANCER_CLASSES       = {"MEL", "BCC", "AKIEC"}
 ALL_CLASSES          = [
     # Malignant
@@ -84,6 +85,14 @@ def _normalize(probs: dict[str, float]) -> dict[str, float]:
     return {k: round(v * 100 / total, 2) for k, v in probs.items()}
 
 
+def _aggregate_max(runs: list[dict[str, float]]) -> dict[str, float]:
+    """每个类别独立取所有 run 中的最大值，不做归一化。"""
+    return {
+        cls: round(max(r[cls] for r in runs), 2)
+        for cls in ALL_CLASSES
+    }
+
+
 def _build_result(filename: str, probs: dict[str, float]) -> dict:
     cancer     = {k: probs[k] for k in ALL_CLASSES if k in CANCER_CLASSES}
     non_cancer = {
@@ -91,7 +100,8 @@ def _build_result(filename: str, probs: dict[str, float]) -> dict:
         if k not in CANCER_CLASSES and probs[k] > NON_CANCER_THRESHOLD
     }
     top          = max(probs, key=probs.get)
-    cancer_total = round(sum(cancer.values()), 2)
+    # 多次取 max 后各类别独立，cancer_total 用癌症类中的最高值
+    cancer_total = round(max(cancer.values()), 2)
     return {
         "filename":       filename,
         "cancer":         cancer,
@@ -104,9 +114,15 @@ def _build_result(filename: str, probs: dict[str, float]) -> dict:
 
 
 def analyze_file(filepath: str) -> dict:
-    """从磁盘读取图片文件并分析。"""
-    img      = Image.open(filepath).convert("RGB")
-    response = _client.models.generate_content(model=MODEL, contents=[img, PROMPT], config=_config)
-    probs    = _parse_probabilities(response.text)
-    probs    = _normalize(probs)
-    return _build_result(os.path.basename(filepath), probs)
+    """跑 N_RUNS 次，每个类别取最大概率后返回结果。"""
+    img  = Image.open(filepath).convert("RGB")
+    runs = []
+    for _ in range(N_RUNS):
+        response = _client.models.generate_content(
+            model=MODEL, contents=[img, PROMPT], config=_config
+        )
+        probs = _normalize(_parse_probabilities(response.text))
+        runs.append(probs)
+
+    agg_probs = _aggregate_max(runs)
+    return _build_result(os.path.basename(filepath), agg_probs)
