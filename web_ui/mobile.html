@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Skin Lesion Detection</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="leaflet.css" />
+  <link rel="stylesheet" href="mobile_style.css?v=3" />
+</head>
+<body>
+
+  <!-- ══ MAIN SCREEN ══════════════════════════════════════════════ -->
+  <div class="screen active" id="screenMain">
+
+    <div class="main-header">
+      <div class="main-header-logo">🔬</div>
+      <span class="main-header-title">Skin Lesion Detection</span>
+      <span class="main-header-badge">Research Tool</span>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-placeholder" id="chatPlaceholder">
+        <div class="ph-icon">🔬</div>
+        <p class="ph-title">Skin Lesion Detection</p>
+        <p class="ph-sub">Upload a photo to get AI analysis,<br>or ask the assistant anything.</p>
+      </div>
+    </div>
+
+    <div class="chat-input-bar">
+      <textarea id="chatInput" placeholder="Ask about your results…" rows="1"></textarea>
+      <button class="send-btn" id="chatSendBtn" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn" id="navGallery">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <span>Gallery</span>
+      </button>
+
+      <button class="nav-btn nav-upload" id="navUpload">
+        <div class="upload-circle">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </div>
+      </button>
+
+      <button class="nav-btn" id="navMap">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+        <span>Map</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ══ GALLERY SCREEN ════════════════════════════════════════════ -->
+  <div class="screen" id="screenGallery">
+    <div class="screen-header">
+      <button class="back-btn" id="galleryBack">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <h1>Gallery</h1>
+      <button class="gallery-clear-all-btn" id="galleryClearAllBtn" title="Clear Gallery">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+        </svg>
+      </button>
+    </div>
+    <div class="gallery-grid" id="galleryGrid"></div>
+    <div class="gallery-empty" id="galleryEmpty">
+      <span>📷</span>
+      <p>No analyzed images yet.<br>Upload and analyse a photo to get started.</p>
+    </div>
+  </div>
+
+  <!-- ══ MAP SCREEN ════════════════════════════════════════════════ -->
+  <div class="screen" id="screenMap">
+    <div class="screen-header">
+      <button class="back-btn" id="mapBack">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <h1>Nearby Facilities</h1>
+      <button class="locate-btn" id="mapLocateBtn" disabled>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+        </svg>
+        Me
+      </button>
+    </div>
+    <div id="mapContainer" class="map-container"></div>
+    <div class="map-addr-bar">
+      <input type="text" id="mapAddrInput" class="map-addr-input" placeholder="Enter your address to mark location…" />
+      <button id="mapAddrBtn" class="map-addr-btn">↵</button>
+    </div>
+  </div>
+
+  <!-- ══ REPORT DRAWER ══════════════════════════════════════════════ -->
+  <div class="report-overlay" id="reportOverlay"></div>
+
+  <div class="report-drawer" id="reportDrawer">
+    <div class="report-header">
+      <button class="drawer-back-btn" id="reportBackBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span>Analysis Report</span>
+      <button class="clear-all-btn" id="clearAllBtn">Clear All</button>
+    </div>
+
+    <div class="drawer-body" id="drawerBody">
+      <div class="pending-thumbs" id="pendingThumbs"></div>
+
+      <div class="analyse-wrap" id="analyseWrap" style="display:none">
+        <button class="btn-analyse" id="analyseBtn">Analyse Images</button>
+      </div>
+
+      <div id="reportResults"></div>
+    </div>
+  </div>
+
+  <!-- Report tab handle (visible when drawer is closed but has content) -->
+  <div class="report-tab" id="reportTab">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+    </svg>
+  </div>
+
+  <!-- ══ UPLOAD BOTTOM SHEET ════════════════════════════════════════ -->
+  <div class="sheet-overlay" id="sheetOverlay"></div>
+  <div class="upload-sheet" id="uploadSheet">
+    <div class="sheet-handle"></div>
+    <p class="sheet-title">Add Image</p>
+    <button class="sheet-btn" id="btnCamera">
+      <span class="sheet-icon">📷</span>Take Photo
+    </button>
+    <button class="sheet-btn" id="btnLibrary">
+      <span class="sheet-icon">🖼</span>Choose from Library
+    </button>
+    <button class="sheet-cancel" id="btnSheetCancel">Cancel</button>
+  </div>
+
+  <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" />
+  <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp" multiple style="display:none" />
+
+  <!-- ══ GALLERY DETAIL MODAL ═══════════════════════════════════════ -->
+  <div class="gallery-modal" id="galleryModal">
+    <button class="modal-close" id="galleryModalClose">✕</button>
+    <div class="modal-scroll">
+      <img class="modal-img" id="galleryModalImg" src="" alt="" />
+      <div class="modal-result" id="galleryModalResult"></div>
+    </div>
+  </div>
+
+  <script src="leaflet.js"></script>
+  <script src="mobile_script.js?v=2"></script>
+</body>
+</html>

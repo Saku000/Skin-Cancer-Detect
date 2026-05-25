@@ -40,6 +40,7 @@ let chatHistory = [];
 let currentResults = null;
 let isAnalysing = false;
 let abortController = null;
+let lastUserLocation = null;  // persists across follow-up turns
 
 /* ── Chat ── */
 const chatMessages    = document.getElementById('chatMessages');
@@ -60,59 +61,207 @@ function appendMessage(role, content) {
   return msg;
 }
 
-/* ── Facility Map ── */
-function renderFacilityMap(facilities, userZip) {
-  const wrap = document.createElement('div');
-  wrap.className = 'chat-map-wrap';
+/* ── Facility Map Panel ── */
+let leafletMap = null;
+let userMarker = null;
+let userCoord  = null;   // persists so "My Location" button always works
 
-  // 1. Facility link buttons — rendered synchronously so they always appear
-  const links = document.createElement('div');
-  links.className = 'map-links';
-  facilities.forEach((f, i) => {
-    const a = document.createElement('a');
-    a.className = 'map-link-btn';
-    a.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(f.name + ' ' + f.address)}`;
-    a.target = '_blank';
-    a.rel = 'noopener';
-    a.textContent = `${i + 1}. ${f.name} ↗`;
-    links.appendChild(a);
-  });
-  wrap.appendChild(links);
+const appLayout = document.getElementById('appLayout');
+const pageRoot  = document.getElementById('pageRoot');
+const mapPanel  = document.getElementById('mapPanel');
 
-  // 2. Map placeholder — will be filled in asynchronously
-  const mapSlot = document.createElement('div');
-  mapSlot.className = 'map-loading';
-  mapSlot.textContent = 'Loading map...';
-  wrap.insertBefore(mapSlot, links); // map goes above the links
+async function _geocode(query, countryCode = 'us') {
+  const cc = countryCode ? `&countrycodes=${countryCode}` : '';
+  const r = await fetch(
+    `https://nominatim.openstreetmap.org/search?format=json&limit=1${cc}&q=${encodeURIComponent(query)}`
+  );
+  if (!r.ok) { console.warn('[map] geocode HTTP', r.status, 'for:', query); return null; }
+  const d = await r.json();
+  if (d[0]) return { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon) };
+  return null;
+}
 
-  chatMessages.appendChild(wrap);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+async function _geocodeFacility(f) {
+  const addr = (f.address || '').trim();
+  // Parenthetical placeholders like "(Address not specified…)" have no real street data — skip to name
+  const hasRealAddress = addr && !addr.startsWith('(');
 
-  // 3. Async: geocode zip → build OSM iframe
-  (async () => {
-    let lat = null, lon = null;
-    const q = userZip ? `${userZip}, USA` : facilities[0].address;
-    try {
-      const r = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`
-      );
-      const d = await r.json();
-      if (d[0]) { lat = parseFloat(d[0].lat); lon = parseFloat(d[0].lon); }
-    } catch (e) { console.warn('[map] geocode failed:', e); }
+  if (hasRealAddress) {
+    // Attempt 1: full address as-is
+    const pos1 = await _geocode(addr);
+    if (pos1) return pos1;
+    await _delay(1100);
 
-    if (lat !== null) {
-      const delta = 0.04;
-      const iframe = document.createElement('iframe');
-      iframe.src = `https://www.openstreetmap.org/export/embed.html` +
-        `?bbox=${lon-delta},${lat-delta},${lon+delta},${lat+delta}&layer=mapnik&marker=${lat},${lon}`;
-      iframe.style.cssText = 'width:100%;height:220px;border:0;display:block;';
-      iframe.setAttribute('allowfullscreen', '');
-      mapSlot.replaceWith(iframe);
-    } else {
-      mapSlot.textContent = 'Map unavailable — use links below to open in Google Maps.';
+    // Attempt 2: strip floor/suite/unit qualifier then retry
+    const cleaned = addr.replace(/,?\s*(?:\d+(?:st|nd|rd|th)\s+floor|floor\s+\d+|suite\s+[\w#-]+|apt\.?\s*[\w#]+|unit\s+[\w#]+)/gi, '').trim();
+    if (cleaned && cleaned !== addr) {
+      const pos2 = await _geocode(cleaned);
+      if (pos2) return pos2;
+      await _delay(1100);
     }
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  })();
+
+    // Attempt 3: name + last two comma-parts (city, state/zip)
+    const parts = addr.split(',');
+    if (parts.length >= 2) {
+      const cityState = parts.slice(-2).join(',').trim();
+      const pos3 = await _geocode(`${f.name || ''} ${cityState}`.trim());
+      if (pos3) return pos3;
+      await _delay(1100);
+    }
+  }
+
+  // Final: facility name alone (works even when address is fake/missing)
+  if (f.name) {
+    const pos = await _geocode(f.name);
+    if (pos) return pos;
+  }
+  return null;
+}
+
+function _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function _makeCircle(color) {
+  return { radius: 9, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.9 };
+}
+
+function _haversineMi(lat1, lon1, lat2, lon2) {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+function _fmtDist(mi) {
+  return mi < 0.1 ? `${Math.round(mi * 5280)} ft` : `${mi.toFixed(1)} mi`;
+}
+
+function _setUserMarker(pos) {
+  userCoord = pos;
+  if (userMarker) userMarker.remove();
+  userMarker = L.circleMarker([pos.lat, pos.lon], _makeCircle('#00c4d2'))
+    .addTo(leafletMap)
+    .bindPopup('Your location');
+  document.getElementById('mapLocateBtn').disabled = false;
+}
+
+async function openMapPanel(facilities, userLocation) {
+  appLayout.classList.add('map-open');
+  pageRoot.classList.add('map-open');
+
+  // Reset state
+  const mapFull = document.getElementById('mapFull');
+  mapFull.innerHTML = '';
+  userMarker = null;
+  userCoord  = null;
+  document.getElementById('mapLocateBtn').disabled = true;
+  if (leafletMap) { leafletMap.remove(); leafletMap = null; }
+
+  // Init Leaflet
+  leafletMap = L.map('mapFull', { zoomControl: true });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 18,
+  }).addTo(leafletMap);
+  leafletMap.setView([37.5, -119.0], 9);
+
+  // Wait for panel to render before Leaflet measures it
+  await _delay(80);
+  leafletMap.invalidateSize();
+
+  // 1. Geocode user location — either a zip ("92617") or full address ("73000 Verano Rd, Irvine, CA")
+  if (userLocation) {
+    const isZip  = /^\d{5}$/.test(userLocation.trim());
+    const query  = isZip ? `${userLocation.trim()}, USA` : userLocation;
+    const pos    = await _geocode(query);
+    if (pos) {
+      _setUserMarker(pos);
+      leafletMap.setView([pos.lat, pos.lon], 13);
+    }
+    await _delay(1100);
+  }
+
+  // 2. Geocode each facility with fallback strategies + rate-limit spacing
+  const bounds = userCoord ? [[userCoord.lat, userCoord.lon]] : [];
+
+  for (const f of facilities) {
+    const pos = await _geocodeFacility(f);
+    if (pos) {
+      bounds.push([pos.lat, pos.lon]);
+      const mapsQuery = encodeURIComponent([f.name, f.address].filter(Boolean).join(', '));
+      const navUrl    = `https://www.google.com/maps/dir/?api=1&destination=${mapsQuery}&travelmode=driving`;
+      const distLine  = userCoord
+        ? `<br><span style="font-size:11px;color:#4285f4;font-weight:600">📍 ${_fmtDist(_haversineMi(userCoord.lat, userCoord.lon, pos.lat, pos.lon))} away</span>`
+        : '';
+      const popup = `
+        <div style="font-family:sans-serif;min-width:170px;line-height:1.5">
+          <b style="font-size:13px">${f.name}</b><br>
+          <span style="font-size:11px;color:#555">${f.address || ''}</span>
+          ${f.phone ? `<br><span style="font-size:11px;color:#555">${f.phone}</span>` : ''}
+          ${distLine}
+          <br>
+          <a href="${navUrl}" target="_blank" rel="noopener"
+             style="display:inline-block;margin-top:7px;padding:5px 11px;
+                    background:#4285f4;color:#fff;border-radius:4px;
+                    text-decoration:none;font-size:11px;font-weight:600">
+            🗺 Navigate in Google Maps
+          </a>
+        </div>`;
+      L.circleMarker([pos.lat, pos.lon], _makeCircle('#ff4d6d'))
+        .addTo(leafletMap)
+        .bindPopup(popup, { maxWidth: 220 });
+      if (!userCoord && bounds.length === 1) {
+        leafletMap.setView([pos.lat, pos.lon], 13);
+      }
+    }
+    await _delay(1100);
+  }
+
+  if (bounds.length > 1) leafletMap.fitBounds(bounds, { padding: [40, 40] });
+  leafletMap.invalidateSize();
+}
+
+function closeMapPanel() {
+  appLayout.classList.remove('map-open');
+  pageRoot.classList.remove('map-open');
+  if (leafletMap) { leafletMap.remove(); leafletMap = null; }
+  userMarker = null;
+  userCoord  = null;
+}
+
+document.getElementById('mapCloseBtn').addEventListener('click', closeMapPanel);
+
+document.getElementById('mapLocateBtn').addEventListener('click', () => {
+  if (!userCoord || !leafletMap) return;
+  leafletMap.setView([userCoord.lat, userCoord.lon], 14);
+  if (userMarker) userMarker.openPopup();
+});
+
+document.getElementById('mapAddrBtn').addEventListener('click', async () => {
+  const input = document.getElementById('mapAddrInput');
+  const addr  = input.value.trim();
+  if (!addr || !leafletMap) return;
+  input.disabled = true;
+  const pos = await _geocode(addr);
+  if (pos) {
+    _setUserMarker(pos);
+    leafletMap.setView([pos.lat, pos.lon], 14);
+    userMarker.openPopup();
+  } else {
+    const orig = input.placeholder;
+    input.placeholder = 'Address not found, try again…';
+    setTimeout(() => { input.placeholder = orig; }, 2000);
+  }
+  input.disabled = false;
+});
+
+document.getElementById('mapAddrInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('mapAddrBtn').click();
+});
+
+function renderFacilityMap(facilities, userLocation) {
+  openMapPanel(facilities, userLocation);
 }
 
 function appendTyping() {
@@ -169,7 +318,8 @@ async function sendMessage(text) {
     const msgEl = appendMessage('assistant', data.reply);
     chatHistory.push({ role: 'assistant', content: data.reply });
     if (data.facilities && data.facilities.length > 0) {
-      renderFacilityMap(data.facilities, data.user_location);
+      if (data.user_location) lastUserLocation = data.user_location;
+      renderFacilityMap(data.facilities, data.user_location || lastUserLocation);
     }
   } catch {
     typing.remove();
@@ -201,6 +351,7 @@ chatInput.addEventListener('input', () => {
 
 chatClearBtn.addEventListener('click', () => {
   chatHistory = [];
+  lastUserLocation = null;
   chatMessages.innerHTML = '';
   const ph = document.createElement('div');
   ph.className = 'chat-placeholder';
@@ -424,6 +575,14 @@ analyseBtn.addEventListener('click', async () => {
     currentResults = data.results;
     generateSummary(data.results);
 
+    // Save to gallery (async, non-blocking)
+    data.results.forEach(result => {
+      if (!result.error) {
+        const file = selectedFiles.find(f => f.name === result.filename);
+        addToGallery(result, file);
+      }
+    });
+
   } catch (err) {
     if (err.name === 'AbortError') {
       // User cancelled — silently reset, keep existing results visible
@@ -500,3 +659,166 @@ function buildErrorCard(result) {
   card.textContent = `⚠ ${result.filename}: ${result.error}`;
   return card;
 }
+
+/* ── Gallery ──────────────────────────────────────────────── */
+const GALLERY_KEY = 'skin_lesion_gallery';
+
+function _loadGallery() {
+  try { return JSON.parse(localStorage.getItem(GALLERY_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function _saveGallery(items) {
+  try {
+    localStorage.setItem(GALLERY_KEY, JSON.stringify(items));
+  } catch {
+    // Storage full — drop oldest entries until it fits
+    while (items.length > 1) {
+      items.pop();
+      try { localStorage.setItem(GALLERY_KEY, JSON.stringify(items)); break; }
+      catch { /* keep dropping */ }
+    }
+  }
+}
+
+function _compressToDataUrl(file, maxPx = 400, quality = 0.75) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const blobUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(blobUrl);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(null); };
+    img.src = blobUrl;
+  });
+}
+
+async function addToGallery(result, file) {
+  if (!file) return;
+  const thumb = await _compressToDataUrl(file);
+  if (!thumb) return;
+
+  const items = _loadGallery();
+  const entry = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+    filename: result.filename,
+    thumb,
+    result,
+    ts: Date.now(),
+  };
+  // Replace existing entry for same filename, otherwise prepend
+  const idx = items.findIndex(i => i.filename === result.filename);
+  if (idx >= 0) items[idx] = entry;
+  else items.unshift(entry);
+
+  _saveGallery(items);
+  _updateGalleryCount();
+  // Refresh grid if modal is open
+  if (document.getElementById('galleryOverlay').classList.contains('open')) {
+    _renderGalleryGrid();
+  }
+}
+
+function _updateGalleryCount() {
+  // count badge removed — no-op kept for call-site compatibility
+}
+
+function _renderGalleryGrid() {
+  const items  = _loadGallery();
+  const grid   = document.getElementById('galleryThumbGrid');
+  const empty  = document.getElementById('galleryEmptyState');
+
+  if (!items.length) {
+    grid.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  grid.innerHTML = '';
+  items.forEach(item => {
+    const thumb = document.createElement('div');
+    thumb.className = 'gallery-thumb';
+    const isHigh = item.result?.is_high_risk;
+    thumb.innerHTML = `
+      <img src="${item.thumb}" alt="${item.filename}" loading="lazy" />
+      <div class="risk-dot ${isHigh ? 'high' : 'low'}"></div>
+    `;
+    thumb.addEventListener('click', () => _openGalleryDetail(item));
+    grid.appendChild(thumb);
+  });
+}
+
+function _openGalleryDetail(item) {
+  document.getElementById('galleryDetailImg').src = item.thumb;
+  document.getElementById('galleryDetailFname').textContent = item.filename;
+
+  const resultEl = document.getElementById('galleryDetailResult');
+  const r = item.result;
+  if (r && !r.error) {
+    const isHigh = r.is_high_risk;
+    resultEl.innerHTML = `
+      <div class="risk-banner ${isHigh ? 'high' : 'low'}" style="margin-bottom:16px">
+        <span class="risk-icon">${isHigh ? '⚠️' : '✅'}</span>
+        <div class="risk-text">${isHigh ? 'High Risk — Malignant features detected' : 'Low Risk — Likely benign'}</div>
+        <div class="risk-pct">${r.cancer_total}%</div>
+      </div>
+      <div class="section-label">Malignant probabilities</div>
+      ${Object.entries(r.cancer).map(([cls, p]) => probRow(cls, p, 'cancer')).join('')}
+      ${Object.keys(r.non_cancer || {}).length ? `
+        <div class="divider" style="margin:14px 0"></div>
+        <div class="section-label">Other conditions &gt;20%</div>
+        ${Object.entries(r.non_cancer).map(([cls, p]) => probRow(cls, p, 'benign')).join('')}
+      ` : ''}
+      <div style="margin-top:14px">
+        <div class="top-chip">Top prediction &nbsp;·&nbsp; <span>${r.top_prediction}</span></div>
+      </div>
+    `;
+    requestAnimationFrame(() => {
+      resultEl.querySelectorAll('.prob-fill[data-pct]').forEach(el => {
+        el.style.width = el.dataset.pct + '%';
+      });
+    });
+  } else {
+    resultEl.innerHTML = `<div class="error-card">⚠ Analysis failed</div>`;
+  }
+
+  document.getElementById('galleryGridView').classList.add('hidden');
+  document.getElementById('galleryDetailView').classList.remove('hidden');
+}
+
+function _openGallery() {
+  _renderGalleryGrid();
+  // Always start on grid view
+  document.getElementById('galleryGridView').classList.remove('hidden');
+  document.getElementById('galleryDetailView').classList.add('hidden');
+  document.getElementById('galleryOverlay').classList.add('open');
+}
+
+function _closeGallery() {
+  document.getElementById('galleryOverlay').classList.remove('open');
+}
+
+// Init gallery count on load
+_updateGalleryCount();
+
+document.getElementById('galleryBtn').addEventListener('click', _openGallery);
+document.getElementById('galleryCloseBtn').addEventListener('click', _closeGallery);
+document.getElementById('galleryOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('galleryOverlay')) _closeGallery();
+});
+document.getElementById('galleryDetailBackBtn').addEventListener('click', () => {
+  document.getElementById('galleryDetailView').classList.add('hidden');
+  document.getElementById('galleryGridView').classList.remove('hidden');
+});
+document.getElementById('galleryClearBtn').addEventListener('click', () => {
+  localStorage.removeItem(GALLERY_KEY);
+  _updateGalleryCount();
+  _renderGalleryGrid();
+});

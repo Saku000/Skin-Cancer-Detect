@@ -5,6 +5,7 @@ analyzer.py — Gemini Vision 皮肤病变分析
 import os
 import json
 import re
+import time
 from google import genai
 from google.genai import types
 from PIL import Image
@@ -118,15 +119,33 @@ def _build_result(filename: str, probs: dict[str, float]) -> dict:
     }
 
 
+def _generate_with_retry(img, max_retries: int = 4, base_delay: float = 5.0):
+    """Call the API with exponential backoff on 503 / rate-limit errors."""
+    for attempt in range(max_retries):
+        try:
+            return _client.models.generate_content(
+                model=MODEL, contents=[img, PROMPT], config=_config
+            )
+        except Exception as e:
+            msg = str(e)
+            is_retryable = ("503" in msg or "UNAVAILABLE" in msg
+                            or "429" in msg or "Resource has been exhausted" in msg)
+            if is_retryable and attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt)
+                print(f"[analyzer] API {msg[:60]}… retrying in {delay:.0f}s "
+                      f"(attempt {attempt + 1}/{max_retries})")
+                time.sleep(delay)
+            else:
+                raise
+
+
 def analyze_file(filepath: str, n_runs: int = N_RUNS) -> dict:
     """跑 n_runs 次，每个类别取最大概率后返回结果。"""
     img  = Image.open(filepath).convert("RGB")
     runs = []
     lighting_votes = []
     for _ in range(n_runs):
-        response = _client.models.generate_content(
-            model=MODEL, contents=[img, PROMPT], config=_config
-        )
+        response = _generate_with_retry(img)
         probs, lighting_ok = _parse_probabilities(response.text)
         runs.append(_normalize(probs))
         lighting_votes.append(lighting_ok)

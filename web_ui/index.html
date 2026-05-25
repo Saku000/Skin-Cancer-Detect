@@ -7,10 +7,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=8" />
+  <link rel="stylesheet" href="style.css?v=11" />
 </head>
 <body>
-  <div class="page">
+  <div class="page" id="pageRoot">
 
     <!-- Header -->
     <header>
@@ -20,6 +20,14 @@
         <p>AI-powered dermatology analysis · Gemini Vision</p>
       </div>
       <span class="badge">Research Tool</span>
+
+      <!-- Gallery Button -->
+      <button class="gallery-btn" id="galleryBtn" title="Gallery">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+      </button>
 
       <div class="settings-wrap">
         <button class="settings-btn" id="settingsBtn" title="Settings">
@@ -55,7 +63,7 @@
       </div>
     </header>
 
-    <div class="app-layout">
+    <div class="app-layout" id="appLayout">
     <div class="main-col">
 
     <!-- Upload Zone -->
@@ -143,11 +151,71 @@
       </div>
     </div><!-- /chat-col -->
 
+    <!-- Map Panel (3rd column, shown when facilities returned) -->
+    <div class="map-panel" id="mapPanel">
+      <div class="map-panel-header">
+        <span class="map-panel-title">Nearby Facilities</span>
+        <div class="map-panel-actions">
+          <button class="map-locate-btn" id="mapLocateBtn" title="Center map on my location">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+            My Location
+          </button>
+          <button class="map-close-btn" id="mapCloseBtn">✕</button>
+        </div>
+      </div>
+      <div id="mapFull" class="map-full"></div>
+      <div class="map-addr-bar">
+        <input type="text" class="map-addr-input" id="mapAddrInput" placeholder="Enter your address to mark on map…" />
+        <button class="map-addr-btn" id="mapAddrBtn">↵ Go</button>
+      </div>
+    </div><!-- /map-panel -->
+
     </div><!-- /app-layout -->
 
   </div>
 
+  <!-- ── Gallery Modal ──────────────────────────────────────── -->
+  <div class="gallery-overlay" id="galleryOverlay">
+    <div class="gallery-modal" id="galleryModal">
+
+      <!-- Grid view -->
+      <div class="gallery-view" id="galleryGridView">
+        <div class="gallery-modal-header">
+          <span class="gallery-modal-title">Gallery</span>
+          <button class="gallery-clear-btn" id="galleryClearBtn" title="Clear All">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+            </svg>
+            Clear All
+          </button>
+          <button class="gallery-close-btn" id="galleryCloseBtn">✕</button>
+        </div>
+        <div class="gallery-thumb-grid" id="galleryThumbGrid"></div>
+        <div class="gallery-empty-state" id="galleryEmptyState">
+          <div class="gallery-empty-icon">🖼</div>
+          <p>No analyzed images yet.<br>Upload and analyse a photo to get started.</p>
+        </div>
+      </div>
+
+      <!-- Detail view (hidden class toggled by JS) -->
+      <div class="gallery-view hidden" id="galleryDetailView">
+        <div class="gallery-modal-header">
+          <button class="gallery-back-btn" id="galleryDetailBackBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Back
+          </button>
+          <span class="gallery-detail-fname" id="galleryDetailFname"></span>
+        </div>
+        <div class="gallery-detail-body">
+          <img class="gallery-detail-img" id="galleryDetailImg" src="" alt="" />
+          <div class="gallery-detail-result" id="galleryDetailResult"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <script src="leaflet.js"></script>
-  <script src="script.js?v=19"></script>
+  <script src="script.js?v=26"></script>
 </body>
 </html>
