@@ -86,6 +86,8 @@ async function renderFacilityMap(facilities, userZip) {
   wrap.className = 'chat-map-wrap';
   const mapEl = document.createElement('div');
   mapEl.className = 'chat-map';
+  mapEl.style.height = '210px';
+  mapEl.style.width = '100%';
   const mapId = 'map-' + Date.now();
   mapEl.id = mapId;
   wrap.appendChild(mapEl);
