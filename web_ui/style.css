@@ -1192,25 +1192,62 @@ header {
 .hidden { display: none !important; }
 
 /* ─── Map Toggle Button ──────────────────────────────────── */
+/*
+ * Default state: collapsed to zero width.
+ * margin-left/right: -16px cancels the parent header's gap:16px on both
+ * sides so the button takes truly zero space — the badge's margin-left:auto
+ * fills the full gap as if the button isn't there.
+ *
+ * .map-visible state: margins return to 0, width expands to 34px.
+ * The badge's auto-margin must now give up ~66px (gap+width+gap) of space,
+ * so the badge smoothly slides left as the button slides in.
+ */
 .map-toggle-btn {
-  width: 34px; height: 34px;
+  height: 34px;
   border-radius: 50%;
   background: rgba(255,255,255,0.05);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;   /* keep 1px always so layout is stable */
   color: var(--text-muted);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: var(--transition);
-  margin-left: 4px;
   flex-shrink: 0;
+  overflow: hidden;
+  pointer-events: none;
+
+  /* Collapsed state */
+  width: 0;
+  padding: 0;
+  opacity: 0;
+  margin-left: -16px;  /* cancel flex gap on left  */
+  margin-right: -16px; /* cancel flex gap on right */
+
+  transition: width        0.34s cubic-bezier(0.4, 0, 0.2, 1),
+              margin-left  0.34s cubic-bezier(0.4, 0, 0.2, 1),
+              margin-right 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity      0.24s ease,
+              border-color var(--transition),
+              background   var(--transition),
+              color        var(--transition);
 }
-.map-toggle-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.map-toggle-btn:not(:disabled):hover {
+
+/* Visible / map-is-open state */
+.map-toggle-btn.map-visible {
+  width: 34px;
+  padding: 0;
+  opacity: 1;
+  margin-left: 0;
+  margin-right: 0;
+  border-color: var(--border);
+  pointer-events: auto;
+}
+
+.map-toggle-btn.map-visible:hover {
   background: var(--teal-dim);
   border-color: rgba(0,196,210,0.35);
   color: var(--teal);
 }
-.map-toggle-btn.active {
+
+.map-toggle-btn.map-visible.active {
   background: var(--teal-dim);
   border-color: rgba(0,196,210,0.35);
   color: var(--teal);

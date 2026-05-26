@@ -153,12 +153,12 @@ async function openMapPanel(facilities, userLocation) {
   // Cancel any pending close/destroy
   if (_closeMapTimer) { clearTimeout(_closeMapTimer); _closeMapTimer = null; }
 
-  // Store for manual reopen via toggle button
+  // Store for potential reopen
   lastFacilities = facilities;
   lastUserLocationForMap = userLocation;
+  // Slide button into view (badge animates left automatically via flex)
   const mapToggleBtn = document.getElementById('mapToggleBtn');
-  mapToggleBtn.disabled = false;
-  mapToggleBtn.classList.add('active');
+  mapToggleBtn.classList.add('map-visible', 'active');
 
   // Tear down existing map before re-init
   if (leafletMap) { leafletMap.remove(); leafletMap = null; }
@@ -240,7 +240,8 @@ async function openMapPanel(facilities, userLocation) {
 
 function closeMapPanel() {
   mapPanel.classList.remove('map-open');
-  document.getElementById('mapToggleBtn').classList.remove('active');
+  // Hide button and slide badge back right
+  document.getElementById('mapToggleBtn').classList.remove('map-visible', 'active');
   userMarker = null;
   userCoord  = null;
   // Destroy Leaflet after the CSS collapse animation finishes (~460ms total)
@@ -253,13 +254,8 @@ function closeMapPanel() {
 
 document.getElementById('mapCloseBtn').addEventListener('click', closeMapPanel);
 
-document.getElementById('mapToggleBtn').addEventListener('click', () => {
-  if (mapPanel.classList.contains('map-open')) {
-    closeMapPanel();
-  } else if (lastFacilities) {
-    openMapPanel(lastFacilities, lastUserLocationForMap);
-  }
-});
+// Button is only visible while map is open — always closes on click
+document.getElementById('mapToggleBtn').addEventListener('click', closeMapPanel);
 
 document.getElementById('mapLocateBtn').addEventListener('click', () => {
   if (!userCoord || !leafletMap) return;
@@ -387,13 +383,10 @@ chatClearBtn.addEventListener('click', () => {
   ph.id = 'chatPlaceholder';
   ph.innerHTML = '<div class="chat-placeholder-icon">💬</div><p>Run an analysis to get<br>AI insights and recommendations</p>';
   chatMessages.appendChild(ph);
-  // Clear map markers and disable reopen button
+  // Close map (also hides the button and slides badge back right)
   if (mapPanel.classList.contains('map-open')) closeMapPanel();
   lastFacilities = null;
   lastUserLocationForMap = null;
-  const mapToggleBtn = document.getElementById('mapToggleBtn');
-  mapToggleBtn.disabled = true;
-  mapToggleBtn.classList.remove('active');
 });
 
 /* ── Settings ── */
