@@ -830,6 +830,48 @@ document.getElementById('mobileChatClearBtn').addEventListener('click', () => {
   clearMapMarkers();
 });
 
+// ── Mobile Settings ───────────────────────────────────────────────────────────
+
+const settingsSheet        = document.getElementById('settingsSheet');
+const settingsOverlayMob   = document.getElementById('settingsOverlayMobile');
+const mobileStepperMinus   = document.getElementById('mobileStepperMinus');
+const mobileStepperPlus    = document.getElementById('mobileStepperPlus');
+const mobileStepperVal     = document.getElementById('mobileStepperVal');
+const mobileApplyBtn       = document.getElementById('mobileApplyBtn');
+
+let pendingNRuns = nRuns;
+
+function openSettingsSheet() {
+  pendingNRuns = nRuns;
+  mobileStepperVal.textContent = pendingNRuns;
+  settingsOverlayMob.classList.add('visible');
+  settingsSheet.classList.add('open');
+}
+
+function closeSettingsSheet() {
+  settingsOverlayMob.classList.remove('visible');
+  settingsSheet.classList.remove('open');
+}
+
+document.getElementById('mobileSettingsBtn').addEventListener('click', openSettingsSheet);
+settingsOverlayMob.addEventListener('click', closeSettingsSheet);
+
+mobileStepperMinus.addEventListener('click', () => {
+  if (pendingNRuns > 1) { pendingNRuns--; mobileStepperVal.textContent = pendingNRuns; }
+});
+mobileStepperPlus.addEventListener('click', () => {
+  if (pendingNRuns < 5) { pendingNRuns++; mobileStepperVal.textContent = pendingNRuns; }
+});
+
+mobileApplyBtn.addEventListener('click', () => {
+  nRuns = pendingNRuns;
+  mobileApplyBtn.textContent = '✓ Applied';
+  setTimeout(() => {
+    mobileApplyBtn.textContent = 'Apply';
+    closeSettingsSheet();
+  }, 700);
+});
+
 // ── Report tab count label ────────────────────────────────────────────────────
 // Inject count span into the tab on init
 reportTab.innerHTML = `

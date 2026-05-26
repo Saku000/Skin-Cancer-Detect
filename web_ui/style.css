@@ -104,7 +104,6 @@ header {
 /* ─── Settings ──────────────────────────────────────────── */
 .settings-wrap {
   position: relative;
-  margin-left: 10px;
   flex-shrink: 0;
 }
 
@@ -1264,7 +1263,6 @@ header {
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: var(--transition);
-  margin-left: 4px;
   flex-shrink: 0;
 }
 .gallery-btn:hover {

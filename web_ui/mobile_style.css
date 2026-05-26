@@ -191,7 +191,8 @@ body::before {
   border-radius: 100px;
 }
 
-.mobile-chat-clear-btn {
+.mobile-chat-clear-btn,
+.mobile-settings-btn {
   width: 32px; height: 32px;
   border-radius: 50%;
   background: none;
@@ -203,10 +204,117 @@ body::before {
   transition: border-color var(--transition), color var(--transition);
   -webkit-tap-highlight-color: transparent;
 }
-.mobile-chat-clear-btn:active {
-  color: var(--red);
-  border-color: rgba(255,77,109,0.4);
+.mobile-chat-clear-btn:active { color: var(--red);  border-color: rgba(255,77,109,0.4); }
+.mobile-settings-btn:active   { color: var(--teal); border-color: rgba(0,196,210,0.35); }
+
+/* ── Mobile Settings Sheet ────────────────────────────────────────────────── */
+.settings-overlay-mobile {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 315;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.24s;
 }
+.settings-overlay-mobile.visible { opacity: 1; pointer-events: auto; }
+
+.settings-sheet {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: rgba(12,16,28,0.98);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 22px 22px 0 0;
+  padding: 10px 20px;
+  padding-bottom: calc(20px + var(--safe-b));
+  z-index: 320;
+  transform: translateY(100%);
+  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.settings-sheet.open { transform: translateY(0); }
+
+.settings-row-mobile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 18px 0 20px;
+}
+
+.settings-label-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+.settings-label-mobile > span:first-child {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.settings-desc-mobile {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.stepper-mobile {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.stepper-btn-mobile {
+  width: 38px; height: 44px;
+  background: rgba(255,255,255,0.04);
+  border: none;
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition), color var(--transition);
+}
+.stepper-btn-mobile:active { background: var(--teal-dim); color: var(--teal); }
+
+.stepper-val-mobile {
+  width: 46px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--teal);
+  background: rgba(0,196,210,0.06);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  letter-spacing: -0.5px;
+}
+
+.btn-apply-mobile {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--teal), #0070c0);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,196,210,0.3);
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--transition), transform var(--transition);
+}
+.btn-apply-mobile:active { opacity: 0.85; transform: scale(0.98); }
 
 /* ── Chat Messages ────────────────────────────────────────────────────────── */
 .chat-messages {
