@@ -240,8 +240,8 @@ async function openMapPanel(facilities, userLocation) {
 
 function closeMapPanel() {
   mapPanel.classList.remove('map-open');
-  // Hide button and slide badge back right
-  document.getElementById('mapToggleBtn').classList.remove('map-visible', 'active');
+  // Keep button visible (data still exists), just remove active highlight
+  document.getElementById('mapToggleBtn').classList.remove('active');
   userMarker = null;
   userCoord  = null;
   // Destroy Leaflet after the CSS collapse animation finishes (~460ms total)
@@ -254,8 +254,13 @@ function closeMapPanel() {
 
 document.getElementById('mapCloseBtn').addEventListener('click', closeMapPanel);
 
-// Button is only visible while map is open — always closes on click
-document.getElementById('mapToggleBtn').addEventListener('click', closeMapPanel);
+document.getElementById('mapToggleBtn').addEventListener('click', () => {
+  if (mapPanel.classList.contains('map-open')) {
+    closeMapPanel();
+  } else if (lastFacilities) {
+    openMapPanel(lastFacilities, lastUserLocationForMap);
+  }
+});
 
 document.getElementById('mapLocateBtn').addEventListener('click', () => {
   if (!userCoord || !leafletMap) return;
@@ -383,10 +388,12 @@ chatClearBtn.addEventListener('click', () => {
   ph.id = 'chatPlaceholder';
   ph.innerHTML = '<div class="chat-placeholder-icon">💬</div><p>Run an analysis to get<br>AI insights and recommendations</p>';
   chatMessages.appendChild(ph);
-  // Close map (also hides the button and slides badge back right)
+  // Close map panel if open
   if (mapPanel.classList.contains('map-open')) closeMapPanel();
+  // Now clear data and hide button — badge slides back right
   lastFacilities = null;
   lastUserLocationForMap = null;
+  document.getElementById('mapToggleBtn').classList.remove('map-visible', 'active');
 });
 
 /* ── Settings ── */
