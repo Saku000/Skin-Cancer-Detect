@@ -1213,16 +1213,16 @@ header {
   overflow: hidden;
   pointer-events: none;
 
-  /* Collapsed state */
+  /* Collapsed state — only cancel the gap BEFORE the button.
+     The 16px gap AFTER it stays, giving badge→gallery the same
+     16px spacing as all other header button pairs. */
   width: 0;
   padding: 0;
   opacity: 0;
-  margin-left: -16px;  /* cancel flex gap on left  */
-  margin-right: -16px; /* cancel flex gap on right */
+  margin-left: -16px;
 
   transition: width        0.34s cubic-bezier(0.4, 0, 0.2, 1),
               margin-left  0.34s cubic-bezier(0.4, 0, 0.2, 1),
-              margin-right 0.34s cubic-bezier(0.4, 0, 0.2, 1),
               opacity      0.24s ease,
               border-color var(--transition),
               background   var(--transition),
@@ -1235,7 +1235,6 @@ header {
   padding: 0;
   opacity: 1;
   margin-left: 0;
-  margin-right: 0;
   border-color: var(--border);
   pointer-events: auto;
 }
