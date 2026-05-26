@@ -41,6 +41,8 @@ let currentResults = null;
 let isAnalysing = false;
 let abortController = null;
 let lastUserLocation = null;  // persists across follow-up turns
+let lastFacilities = null;            // for map reopen button
+let lastUserLocationForMap = null;
 
 /* ── Chat ── */
 const chatMessages    = document.getElementById('chatMessages');
@@ -148,7 +150,13 @@ function _setUserMarker(pos) {
 
 async function openMapPanel(facilities, userLocation) {
   appLayout.classList.add('map-open');
-  pageRoot.classList.add('map-open');
+
+  // Store for manual reopen via toggle button
+  lastFacilities = facilities;
+  lastUserLocationForMap = userLocation;
+  const mapToggleBtn = document.getElementById('mapToggleBtn');
+  mapToggleBtn.disabled = false;
+  mapToggleBtn.classList.add('active');
 
   // Reset state
   const mapFull = document.getElementById('mapFull');
@@ -224,13 +232,21 @@ async function openMapPanel(facilities, userLocation) {
 
 function closeMapPanel() {
   appLayout.classList.remove('map-open');
-  pageRoot.classList.remove('map-open');
+  document.getElementById('mapToggleBtn').classList.remove('active');
   if (leafletMap) { leafletMap.remove(); leafletMap = null; }
   userMarker = null;
   userCoord  = null;
 }
 
 document.getElementById('mapCloseBtn').addEventListener('click', closeMapPanel);
+
+document.getElementById('mapToggleBtn').addEventListener('click', () => {
+  if (appLayout.classList.contains('map-open')) {
+    closeMapPanel();
+  } else if (lastFacilities) {
+    openMapPanel(lastFacilities, lastUserLocationForMap);
+  }
+});
 
 document.getElementById('mapLocateBtn').addEventListener('click', () => {
   if (!userCoord || !leafletMap) return;
@@ -358,6 +374,13 @@ chatClearBtn.addEventListener('click', () => {
   ph.id = 'chatPlaceholder';
   ph.innerHTML = '<div class="chat-placeholder-icon">💬</div><p>Run an analysis to get<br>AI insights and recommendations</p>';
   chatMessages.appendChild(ph);
+  // Clear map markers and disable reopen button
+  if (appLayout.classList.contains('map-open')) closeMapPanel();
+  lastFacilities = null;
+  lastUserLocationForMap = null;
+  const mapToggleBtn = document.getElementById('mapToggleBtn');
+  mapToggleBtn.disabled = true;
+  mapToggleBtn.classList.remove('active');
 });
 
 /* ── Settings ── */

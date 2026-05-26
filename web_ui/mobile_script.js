@@ -780,6 +780,17 @@ mapLocateBtn.addEventListener('click', () => {
   userMarker?.openPopup();
 });
 
+function clearMapMarkers() {
+  if (!leafletMap) return;
+  leafletMap.eachLayer(layer => {
+    if (layer instanceof L.CircleMarker) layer.remove();
+  });
+  userMarker = null;
+  userCoord = null;
+  lastUserLocation = null;
+  mapLocateBtn.disabled = true;
+}
+
 mapAddrBtn.addEventListener('click', async () => {
   const addr = mapAddrInput.value.trim();
   if (!addr || !leafletMap) return;
@@ -798,6 +809,26 @@ mapAddrBtn.addEventListener('click', async () => {
 });
 
 mapAddrInput.addEventListener('keydown', e => { if (e.key === 'Enter') mapAddrBtn.click(); });
+
+// ── Clear Chat ────────────────────────────────────────────────────────────────
+
+document.getElementById('mobileChatClearBtn').addEventListener('click', () => {
+  chatHistory = [];
+  lastUserLocation = null;
+  // Rebuild the chat messages area with placeholder
+  chatMessages.innerHTML = '';
+  const ph = document.createElement('div');
+  ph.className = 'chat-placeholder';
+  ph.id = 'chatPlaceholder';
+  ph.innerHTML = `
+    <div class="ph-icon">🔬</div>
+    <p class="ph-title">Skin Lesion Detection</p>
+    <p class="ph-sub">Upload a photo to get AI analysis,<br>or ask the assistant anything.</p>
+  `;
+  chatMessages.appendChild(ph);
+  // Clear map markers
+  clearMapMarkers();
+});
 
 // ── Report tab count label ────────────────────────────────────────────────────
 // Inject count span into the tab on init

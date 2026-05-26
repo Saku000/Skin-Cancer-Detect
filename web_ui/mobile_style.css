@@ -191,6 +191,23 @@ body::before {
   border-radius: 100px;
 }
 
+.mobile-chat-clear-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: border-color var(--transition), color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.mobile-chat-clear-btn:active {
+  color: var(--red);
+  border-color: rgba(255,77,109,0.4);
+}
+
 /* ── Chat Messages ────────────────────────────────────────────────────────── */
 .chat-messages {
   flex: 1;

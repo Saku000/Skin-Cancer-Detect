@@ -772,10 +772,6 @@ header {
   align-items: start;
 }
 
-/* Three-column layout when map panel is open */
-#pageRoot.map-open { max-width: 1560px; }
-#appLayout.map-open { grid-template-columns: 1fr 280px 420px; }
-
 .main-col { min-width: 0; }
 
 .chat-col {
@@ -783,20 +779,24 @@ header {
   top: 24px;
 }
 
-/* ─── Map Panel ──────────────────────────────────────────── */
+/* ─── Map Panel (fixed floating overlay) ────────────────── */
 .map-panel {
   display: none;
-  position: sticky;
-  top: 24px;
-  height: calc(100vh - 160px);
-  min-height: 480px;
+  position: fixed;
+  /* Align with page's right inner edge on wide screens */
+  right: max(16px, calc((100vw - 1100px) / 2 + 16px));
+  top: 70px;
+  width: min(400px, calc(100vw - 32px));
+  height: calc(100vh - 100px);
   max-height: 820px;
-  background: var(--bg-card);
+  background: rgba(8,14,26,0.98);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
   flex-direction: column;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(0,196,210,0.08);
+  z-index: 150;
   animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
@@ -1163,11 +1163,18 @@ header {
 
 /* ─── Responsive ─────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .app-layout,
-  #appLayout.map-open { grid-template-columns: 1fr; }
+  .app-layout { grid-template-columns: 1fr; }
   .chat-col { position: static; }
   .chat-panel { height: 440px; }
-  .map-panel { position: static; height: 420px; }
+  /* Map panel: bottom sheet on narrow viewports */
+  .map-panel {
+    right: 0; left: 0;
+    bottom: 0; top: auto;
+    width: 100%;
+    height: 50vh;
+    max-height: 400px;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
 }
 
 /* ─── Scrollbar ─────────────────────────────────────────── */
@@ -1184,6 +1191,31 @@ header {
 
 /* ─── Utility ───────────────────────────────────────────── */
 .hidden { display: none !important; }
+
+/* ─── Map Toggle Button ──────────────────────────────────── */
+.map-toggle-btn {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--transition);
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+.map-toggle-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.map-toggle-btn:not(:disabled):hover {
+  background: var(--teal-dim);
+  border-color: rgba(0,196,210,0.35);
+  color: var(--teal);
+}
+.map-toggle-btn.active {
+  background: var(--teal-dim);
+  border-color: rgba(0,196,210,0.35);
+  color: var(--teal);
+}
 
 /* ─── Gallery Button ─────────────────────────────────────── */
 .gallery-btn {
