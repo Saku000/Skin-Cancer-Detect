@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=12" />
+  <link rel="stylesheet" href="style.css?v=13" />
 </head>
 <body>
   <div class="page" id="pageRoot">
@@ -122,8 +122,29 @@
 
     </div><!-- /main-col -->
 
-    <!-- Chat Panel -->
+    <!-- Chat + Map Column -->
     <div class="chat-col">
+
+      <!-- Map Panel (slides in above chat when facilities returned) -->
+      <div class="map-panel" id="mapPanel">
+        <div class="map-panel-header">
+          <span class="map-panel-title">Nearby Facilities</span>
+          <div class="map-panel-actions">
+            <button class="map-locate-btn" id="mapLocateBtn" title="Center map on my location">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+              My Location
+            </button>
+            <button class="map-close-btn" id="mapCloseBtn">✕</button>
+          </div>
+        </div>
+        <div id="mapFull" class="map-full"></div>
+        <div class="map-addr-bar">
+          <input type="text" class="map-addr-input" id="mapAddrInput" placeholder="Enter your address to mark on map…" />
+          <button class="map-addr-btn" id="mapAddrBtn">↵ Go</button>
+        </div>
+      </div><!-- /map-panel -->
+
+      <!-- Chat Panel -->
       <div class="chat-panel">
 
         <div class="chat-header">
@@ -156,27 +177,9 @@
           </button>
         </div>
 
-      </div>
-    </div><!-- /chat-col -->
+      </div><!-- /chat-panel -->
 
-    <!-- Map Panel (3rd column, shown when facilities returned) -->
-    <div class="map-panel" id="mapPanel">
-      <div class="map-panel-header">
-        <span class="map-panel-title">Nearby Facilities</span>
-        <div class="map-panel-actions">
-          <button class="map-locate-btn" id="mapLocateBtn" title="Center map on my location">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-            My Location
-          </button>
-          <button class="map-close-btn" id="mapCloseBtn">✕</button>
-        </div>
-      </div>
-      <div id="mapFull" class="map-full"></div>
-      <div class="map-addr-bar">
-        <input type="text" class="map-addr-input" id="mapAddrInput" placeholder="Enter your address to mark on map…" />
-        <button class="map-addr-btn" id="mapAddrBtn">↵ Go</button>
-      </div>
-    </div><!-- /map-panel -->
+    </div><!-- /chat-col -->
 
     </div><!-- /app-layout -->
 
@@ -224,6 +227,6 @@
   </div>
 
   <script src="leaflet.js"></script>
-  <script src="script.js?v=27"></script>
+  <script src="script.js?v=28"></script>
 </body>
 </html>

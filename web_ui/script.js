@@ -67,6 +67,7 @@ function appendMessage(role, content) {
 let leafletMap = null;
 let userMarker = null;
 let userCoord  = null;   // persists so "My Location" button always works
+let _closeMapTimer = null;  // for deferred Leaflet destroy on close
 
 const appLayout = document.getElementById('appLayout');
 const pageRoot  = document.getElementById('pageRoot');
@@ -149,7 +150,8 @@ function _setUserMarker(pos) {
 }
 
 async function openMapPanel(facilities, userLocation) {
-  appLayout.classList.add('map-open');
+  // Cancel any pending close/destroy
+  if (_closeMapTimer) { clearTimeout(_closeMapTimer); _closeMapTimer = null; }
 
   // Store for manual reopen via toggle button
   lastFacilities = facilities;
@@ -158,15 +160,21 @@ async function openMapPanel(facilities, userLocation) {
   mapToggleBtn.disabled = false;
   mapToggleBtn.classList.add('active');
 
+  // Tear down existing map before re-init
+  if (leafletMap) { leafletMap.remove(); leafletMap = null; }
+
+  // Slide the map panel open (triggers CSS height+opacity transition)
+  mapPanel.classList.add('map-open');
+
   // Reset state
   const mapFull = document.getElementById('mapFull');
   mapFull.innerHTML = '';
   userMarker = null;
   userCoord  = null;
   document.getElementById('mapLocateBtn').disabled = true;
-  if (leafletMap) { leafletMap.remove(); leafletMap = null; }
 
-  // Init Leaflet
+  // Init Leaflet — wait for panel to have measurable height
+  await _delay(120);
   leafletMap = L.map('mapFull', { zoomControl: true });
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap',
@@ -174,8 +182,8 @@ async function openMapPanel(facilities, userLocation) {
   }).addTo(leafletMap);
   leafletMap.setView([37.5, -119.0], 9);
 
-  // Wait for panel to render before Leaflet measures it
-  await _delay(80);
+  // Let the transition finish, then force a resize
+  await _delay(320);
   leafletMap.invalidateSize();
 
   // 1. Geocode user location — either a zip ("92617") or full address ("73000 Verano Rd, Irvine, CA")
@@ -231,17 +239,22 @@ async function openMapPanel(facilities, userLocation) {
 }
 
 function closeMapPanel() {
-  appLayout.classList.remove('map-open');
+  mapPanel.classList.remove('map-open');
   document.getElementById('mapToggleBtn').classList.remove('active');
-  if (leafletMap) { leafletMap.remove(); leafletMap = null; }
   userMarker = null;
   userCoord  = null;
+  // Destroy Leaflet after the CSS collapse animation finishes (~460ms total)
+  if (_closeMapTimer) clearTimeout(_closeMapTimer);
+  _closeMapTimer = setTimeout(() => {
+    if (leafletMap) { leafletMap.remove(); leafletMap = null; }
+    _closeMapTimer = null;
+  }, 480);
 }
 
 document.getElementById('mapCloseBtn').addEventListener('click', closeMapPanel);
 
 document.getElementById('mapToggleBtn').addEventListener('click', () => {
-  if (appLayout.classList.contains('map-open')) {
+  if (mapPanel.classList.contains('map-open')) {
     closeMapPanel();
   } else if (lastFacilities) {
     openMapPanel(lastFacilities, lastUserLocationForMap);
@@ -375,7 +388,7 @@ chatClearBtn.addEventListener('click', () => {
   ph.innerHTML = '<div class="chat-placeholder-icon">💬</div><p>Run an analysis to get<br>AI insights and recommendations</p>';
   chatMessages.appendChild(ph);
   // Clear map markers and disable reopen button
-  if (appLayout.classList.contains('map-open')) closeMapPanel();
+  if (mapPanel.classList.contains('map-open')) closeMapPanel();
   lastFacilities = null;
   lastUserLocationForMap = null;
   const mapToggleBtn = document.getElementById('mapToggleBtn');

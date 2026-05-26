@@ -774,33 +774,42 @@ header {
 
 .main-col { min-width: 0; }
 
+/* Chat column: flex column so map slides in above chat */
 .chat-col {
   position: sticky;
   top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: calc(100vh - 160px);
+  min-height: 480px;
+  max-height: 820px;
 }
 
-/* ─── Map Panel (fixed floating overlay) ────────────────── */
+/* ─── Map Panel (animated, inside chat column) ───────────── */
 .map-panel {
-  display: none;
-  position: fixed;
-  /* Align with page's right inner edge on wide screens */
-  right: max(16px, calc((100vw - 1100px) / 2 + 16px));
-  top: 70px;
-  width: min(400px, calc(100vw - 32px));
-  height: calc(100vh - 100px);
-  max-height: 820px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  border-radius: var(--radius);
   background: rgba(8,14,26,0.98);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  flex-direction: column;
-  backdrop-filter: blur(20px);
-  box-shadow: 0 24px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(0,196,210,0.08);
-  z-index: 150;
-  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+  backdrop-filter: blur(8px);
+  /* Closing: opacity fades first, then height collapses */
+  transition: height 0.38s cubic-bezier(0.4, 0, 0.2, 1) 0.08s,
+              opacity 0.2s ease;
 }
 
-#appLayout.map-open .map-panel { display: flex; }
+.map-panel.map-open {
+  height: 300px;
+  opacity: 1;
+  /* Opening: height expands first, then opacity fades in */
+  transition: height 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.28s ease 0.1s;
+}
 
 @keyframes slideInRight {
   from { opacity: 0; transform: translateX(20px); }
@@ -923,9 +932,8 @@ header {
   border-radius: var(--radius);
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 160px);
-  min-height: 480px;
-  max-height: 820px;
+  flex: 1;         /* fills remaining height after map panel */
+  min-height: 0;   /* allow flex shrink below intrinsic size */
   overflow: hidden;
   backdrop-filter: blur(8px);
 }
@@ -1164,17 +1172,8 @@ header {
 /* ─── Responsive ─────────────────────────────────────────── */
 @media (max-width: 900px) {
   .app-layout { grid-template-columns: 1fr; }
-  .chat-col { position: static; }
-  .chat-panel { height: 440px; }
-  /* Map panel: bottom sheet on narrow viewports */
-  .map-panel {
-    right: 0; left: 0;
-    bottom: 0; top: auto;
-    width: 100%;
-    height: 50vh;
-    max-height: 400px;
-    border-radius: var(--radius) var(--radius) 0 0;
-  }
+  .chat-col { position: static; height: 440px; min-height: 440px; max-height: 440px; }
+  .map-panel.map-open { height: 200px; }
 }
 
 /* ─── Scrollbar ─────────────────────────────────────────── */
