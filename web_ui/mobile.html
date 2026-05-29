@@ -6,7 +6,7 @@
   <title>Skin Lesion Detection</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="leaflet.css" />
-  <link rel="stylesheet" href="mobile_style.css?v=5" />
+  <link rel="stylesheet" href="mobile_style.css?v=6" />
 </head>
 <body>
 
@@ -138,6 +138,30 @@
         <button class="btn-analyse" id="analyseBtn">Analyse Images</button>
       </div>
 
+      <!-- Lighting warning (mobile) -->
+      <div class="quality-warning-mobile" id="lightingWarningMobile" style="display:none;">
+        <div class="qw-header-mobile">
+          <span class="qw-icon-mobile">💡</span>
+          <div>
+            <div class="qw-title-mobile">Poor lighting detected</div>
+            <div class="qw-desc-mobile">The images below appear to have poor lighting conditions, which may affect accuracy. Consider retaking them in better light.</div>
+          </div>
+        </div>
+        <div class="qw-thumbs-mobile" id="lightingThumbsMobile"></div>
+      </div>
+
+      <!-- Framing warning (mobile) -->
+      <div class="quality-warning-mobile" id="framingWarningMobile" style="display:none;">
+        <div class="qw-header-mobile">
+          <span class="qw-icon-mobile">🖼</span>
+          <div>
+            <div class="qw-title-mobile">Poor framing detected</div>
+            <div class="qw-desc-mobile">The images below have insufficient skin coverage or contain too many irrelevant objects. Capture only the lesion area up close with a clean background.</div>
+          </div>
+        </div>
+        <div class="qw-thumbs-mobile" id="framingThumbsMobile"></div>
+      </div>
+
       <div id="reportResults"></div>
     </div>
   </div>
@@ -195,6 +219,6 @@
   </div>
 
   <script src="leaflet.js"></script>
-  <script src="mobile_script.js?v=4"></script>
+  <script src="mobile_script.js?v=5"></script>
 </body>
 </html>

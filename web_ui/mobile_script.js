@@ -208,6 +208,8 @@ clearAllBtn.addEventListener('click', async () => {
   selectedFiles = [];
   renderPendingThumbs();
   reportResults.innerHTML = '';
+  document.getElementById('lightingWarningMobile').style.display = 'none';
+  document.getElementById('framingWarningMobile').style.display = 'none';
   currentResults = null;
   closeDrawer();
   reportTab.classList.remove('visible');
@@ -223,6 +225,8 @@ analyseBtn.addEventListener('click', async () => {
   analyseBtn.disabled = true;
   analyseBtn.innerHTML = '<span class="spinner"></span> Uploading…';
   reportResults.innerHTML = '';
+  document.getElementById('lightingWarningMobile').style.display = 'none';
+  document.getElementById('framingWarningMobile').style.display = 'none';
 
   try {
     await fetch(`${API}/clear`, { method: 'DELETE' });
@@ -255,6 +259,40 @@ analyseBtn.addEventListener('click', async () => {
         el.style.width = el.dataset.pct + '%';
       });
     });
+
+    // Lighting warning
+    const poorLit = data.results.filter(r => !r.error && r.lighting_ok === false);
+    const lwMob    = document.getElementById('lightingWarningMobile');
+    const lwThMob  = document.getElementById('lightingThumbsMobile');
+    if (poorLit.length > 0) {
+      lwThMob.innerHTML = '';
+      poorLit.forEach(r => {
+        const file = selectedFiles.find(f => f.name === r.filename);
+        const wrap = document.createElement('div'); wrap.className = 'qw-thumb-mobile';
+        const img  = document.createElement('img');
+        img.src = file ? URL.createObjectURL(file) : ''; img.alt = r.filename;
+        const lbl  = document.createElement('span'); lbl.textContent = r.filename;
+        wrap.appendChild(img); wrap.appendChild(lbl); lwThMob.appendChild(wrap);
+      });
+      lwMob.style.display = 'block';
+    }
+
+    // Framing warning
+    const poorFraming = data.results.filter(r => !r.error && r.framing_ok === false);
+    const fwMob       = document.getElementById('framingWarningMobile');
+    const fwThMob     = document.getElementById('framingThumbsMobile');
+    if (poorFraming.length > 0) {
+      fwThMob.innerHTML = '';
+      poorFraming.forEach(r => {
+        const file = selectedFiles.find(f => f.name === r.filename);
+        const wrap = document.createElement('div'); wrap.className = 'qw-thumb-mobile';
+        const img  = document.createElement('img');
+        img.src = file ? URL.createObjectURL(file) : ''; img.alt = r.filename;
+        const lbl  = document.createElement('span'); lbl.textContent = r.filename;
+        wrap.appendChild(img); wrap.appendChild(lbl); fwThMob.appendChild(wrap);
+      });
+      fwMob.style.display = 'block';
+    }
 
     selectedFiles = [];
     renderPendingThumbs();
