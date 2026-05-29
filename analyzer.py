@@ -61,6 +61,7 @@ Other:
 
 Also assess image quality:
 - "lighting_ok": false if the image is too dark, overexposed, or lighting significantly impairs visibility of the lesion; true otherwise.
+- "framing_ok": false if (1) skin or the lesion occupies less than roughly 30% of the image frame, leaving too much background, clothing, or non-skin area, OR (2) the image is cluttered with many irrelevant objects (e.g. furniture, multiple body parts unrelated to the lesion, busy backgrounds) that would confuse lesion analysis; true otherwise. A ruler or scale marker next to the lesion is acceptable.
 
 You must respond in English only. Return ONLY a valid JSON object, no extra text:
 {
@@ -69,7 +70,8 @@ You must respond in English only. Return ONLY a valid JSON object, no extra text
   "WART": <number>, "ECZEMA": <number>, "PSORIASIS": <number>,
   "ACNE": <number>, "SEBDERM": <number>, "ROSACEA": <number>,
   "TINEA": <number>, "VITILIGO": <number>, "OTHER": <number>,
-  "lighting_ok": <true or false>
+  "lighting_ok": <true or false>,
+  "framing_ok": <true or false>
 }"""
 
 
@@ -81,7 +83,8 @@ def _parse_probabilities(text: str) -> tuple[dict[str, float], bool]:
     if missing:
         raise ValueError(f"Response missing classes: {missing}")
     lighting_ok = bool(raw.get("lighting_ok", True))
-    return probs, lighting_ok
+    framing_ok  = bool(raw.get("framing_ok", True))
+    return probs, lighting_ok, framing_ok
 
 
 def _normalize(probs: dict[str, float]) -> dict[str, float]:
@@ -144,16 +147,19 @@ def analyze_file(filepath: str, n_runs: int = N_RUNS) -> dict:
     img  = Image.open(filepath).convert("RGB")
     runs = []
     lighting_votes = []
+    framing_votes  = []
     for _ in range(n_runs):
         response = _generate_with_retry(img)
-        probs, lighting_ok = _parse_probabilities(response.text)
+        probs, lighting_ok, framing_ok = _parse_probabilities(response.text)
         runs.append(_normalize(probs))
         lighting_votes.append(lighting_ok)
+        framing_votes.append(framing_ok)
 
     agg_probs = _aggregate_max(runs)
     result = _build_result(os.path.basename(filepath), agg_probs)
-    # 多数票决定光线是否OK
-    result["lighting_ok"] = (sum(lighting_votes) > len(lighting_votes) / 2)
+    majority = len(runs) / 2
+    result["lighting_ok"] = (sum(lighting_votes) > majority)
+    result["framing_ok"]  = (sum(framing_votes)  > majority)
     return result
 
 
