@@ -107,7 +107,6 @@ function closeSheet() {
 }
 
 navUpload.addEventListener('click',       openSheet);
-document.getElementById('addMoreMobileBtn').addEventListener('click', openSheet);
 sheetOverlay.addEventListener('click',    closeSheet);
 btnSheetCancel.addEventListener('click',  closeSheet);
 
