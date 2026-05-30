@@ -60,7 +60,9 @@ SYSTEM_BASE = (
 SUMMARY_REQUEST = (
     "Please provide a warm, reassuring summary of these skin analysis results. "
     "Start by acknowledging that receiving results can feel worrying. "
-    "Briefly explain what was detected and the risk level in simple, calm language. "
+    "Describe the overall risk level in simple, calm language. "
+    "IMPORTANT: Only mention a specific condition (MEL, BCC, AKIEC) by name if its probability is above 15%. "
+    "If all probabilities are low, say the screening did not find significant signs of concern — do NOT list conditions with zero or near-zero scores. "
     "End with an encouraging next step. "
     "Keep it to 3-4 sentences. Plain text only, no bullet points."
 )
@@ -79,10 +81,11 @@ def _build_context(results: list = None) -> str:
             top        = r.get("top_prediction", "?")
             risk_level = {"high": "requires urgent attention", "medium": "warrants further evaluation"}.get(r.get("risk_level", "low"), "appears low risk")
             ctotal     = r.get("cancer_total", 0)
-            cancer_str = ", ".join(f"{k}={v}%" for k, v in r.get("cancer", {}).items())
+            notable    = {k: v for k, v in r.get("cancer", {}).items() if v >= 15}
+            cancer_str = ", ".join(f"{k}={v}%" for k, v in notable.items()) if notable else "none above 15%"
             ctx += (
-                f"- {r.get('filename', '?')}: top={top}, {risk_level}, "
-                f"malignancy score={ctotal}%, breakdown=[{cancer_str}]\n"
+                f"- {r.get('filename', '?')}: {risk_level}, "
+                f"malignancy score={ctotal}%, notable findings=[{cancer_str}]\n"
             )
     else:
         ctx += "\n\nNo analysis results are available yet."
