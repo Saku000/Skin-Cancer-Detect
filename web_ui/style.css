@@ -292,7 +292,8 @@ header {
 .upload-zone {
   border: 2px dashed var(--border);
   border-radius: var(--radius);
-  padding: 14px 32px 56px;
+  padding: 36px 32px 56px;
+  margin-top: 12px;
   text-align: center;
   cursor: pointer;
   transition: var(--transition);
