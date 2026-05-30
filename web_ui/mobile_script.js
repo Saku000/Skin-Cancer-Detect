@@ -3,22 +3,9 @@
 const API = window.location.origin;
 
 const CLASS_LABEL = {
-  MEL:       'Melanoma (MEL)',
-  BCC:       'Basal Cell Carcinoma (BCC)',
-  AKIEC:     'Actinic Keratosis / SCC',
-  NV:        'Melanocytic Nevi (NV)',
-  BKL:       'Benign Keratosis (BKL)',
-  DF:        'Dermatofibroma (DF)',
-  VASC:      'Vascular Lesion (VASC)',
-  WART:      'Wart / Verruca',
-  ECZEMA:    'Eczema / Dermatitis',
-  PSORIASIS: 'Psoriasis',
-  ACNE:      'Acne',
-  SEBDERM:   'Seborrheic Dermatitis',
-  ROSACEA:   'Rosacea',
-  TINEA:     'Tinea / Fungal',
-  VITILIGO:  'Vitiligo',
-  OTHER:     'Other Condition',
+  MEL:   'Melanoma (MEL)',
+  BCC:   'Basal Cell Carcinoma (BCC)',
+  AKIEC: 'Actinic Keratosis / SCC',
 };
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -324,12 +311,6 @@ function buildResultCard(result, file) {
   const cancerRows = Object.entries(result.cancer)
     .map(([cls, p]) => probRowHTML(cls, p, 'cancer')).join('');
 
-  const nonCancerBlock = Object.keys(result.non_cancer || {}).length
-    ? `<div style="margin-top:10px">
-         <div class="section-label-mobile">Other conditions &gt;20%</div>
-         ${Object.entries(result.non_cancer).map(([cls, p]) => probRowHTML(cls, p, 'benign')).join('')}
-       </div>` : '';
-
   const card = document.createElement('div');
   card.className = 'result-card-mobile';
   card.innerHTML = `
@@ -345,7 +326,6 @@ function buildResultCard(result, file) {
       </div>
       <div class="section-label-mobile">Malignant probabilities</div>
       <div class="prob-list">${cancerRows}</div>
-      ${nonCancerBlock}
       <div class="top-chip-mobile">Top: <span>${result.top_prediction}</span></div>
     </div>
   `;
@@ -461,12 +441,6 @@ function openGalleryModal(item) {
   const cancerRows = Object.entries(r.cancer)
     .map(([cls, p]) => probRowHTML(cls, p, 'cancer')).join('');
 
-  const nonCancerBlock = Object.keys(r.non_cancer || {}).length
-    ? `<div style="margin-top:12px">
-         <div class="section-label-mobile">Other conditions &gt;20%</div>
-         ${Object.entries(r.non_cancer).map(([cls, p]) => probRowHTML(cls, p, 'benign')).join('')}
-       </div>` : '';
-
   galleryModalResult.innerHTML = `
     <div class="rcm-filename">${r.filename}</div>
     <div class="risk-banner ${isHigh ? 'high' : 'low'}">
@@ -476,7 +450,6 @@ function openGalleryModal(item) {
     </div>
     <div class="section-label-mobile">Malignant probabilities</div>
     <div class="prob-list">${cancerRows}</div>
-    ${nonCancerBlock}
     <div class="top-chip-mobile" style="margin-top:10px">Top: <span>${r.top_prediction}</span></div>
   `;
 

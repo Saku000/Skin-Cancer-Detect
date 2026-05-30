@@ -18,64 +18,30 @@ _config  = types.GenerateContentConfig(temperature=0)
 
 MODEL                = "gemini-2.5-pro"
 N_RUNS               = 3      # 每张图跑几次，每个类别取最大概率
-CANCER_CLASSES       = {"MEL", "BCC", "AKIEC"}
-ALL_CLASSES          = [
-    # Malignant
-    "MEL", "BCC", "AKIEC",
-    # Benign — dermoscopic (ISIC)
-    "NV", "BKL", "DF", "VASC",
-    # Benign — common skin conditions
-    "WART", "ECZEMA", "PSORIASIS", "ACNE", "SEBDERM", "ROSACEA", "TINEA", "VITILIGO",
-    # Catch-all
-    "OTHER",
-]
-NON_CANCER_THRESHOLD = 20.0
+CANCER_CLASSES = {"MEL", "BCC", "AKIEC"}
+ALL_CLASSES    = ["MEL", "BCC", "AKIEC"]
 
-PROMPT = """You are a dermatology AI assistant specialized in skin condition analysis.
+PROMPT = """You are a dermatology AI assistant specialized in skin cancer screening.
 
-Analyze the skin image and estimate the probability (percentage, 0-100) that it belongs to each category below. Probabilities must sum to exactly 100.
+For the skin image provided, estimate the independent probability (0–100) that it shows each of the three malignant conditions below. Each is an independent estimate — they do NOT need to sum to 100.
 
-Malignant:
-- MEL: Melanoma — irregular pigmented lesion, asymmetry, varied color
+- MEL: Melanoma — irregular pigmented lesion, asymmetry, varied color, irregular border
 - BCC: Basal Cell Carcinoma — pearly or translucent nodule, rolled border, telangiectasia
 - AKIEC: Actinic Keratosis / Squamous Cell Carcinoma — rough scaly patch on sun-exposed skin
 
-Benign (dermoscopic):
-- NV: Melanocytic Nevi — common mole, uniform color and border
-- BKL: Benign Keratosis-like Lesions — seborrheic keratosis, stuck-on waxy appearance
-- DF: Dermatofibroma — firm nodule, often on legs, central white scar
-- VASC: Vascular Lesions — angioma, hemangioma, bright red/purple vascular structures
-
-Common skin conditions:
-- WART: Wart / Verruca — rough cauliflower-like surface, HPV-related
-- ECZEMA: Eczema / Dermatitis — red, itchy, inflamed, often with scaling or weeping
-- PSORIASIS: Psoriasis — well-defined red plaques with silvery-white scales
-- ACNE: Acne — comedones, papules, pustules, nodules on face/back/chest
-- SEBDERM: Seborrheic Dermatitis — greasy yellowish scales on scalp, face, or chest
-- ROSACEA: Rosacea — persistent facial redness, visible vessels, papules
-- TINEA: Tinea / Fungal Infection — ring-like scaly patch, ringworm or athlete's foot
-- VITILIGO: Vitiligo — depigmented white patches with sharp borders
-
-Other:
-- OTHER: Does not clearly match any category above, or image quality is insufficient
-
 Also assess image quality:
 - "lighting_ok": false if the image is too dark, overexposed, or lighting significantly impairs visibility of the lesion; true otherwise.
-- "framing_ok": false if (1) skin or the lesion occupies less than roughly 30% of the image frame, leaving too much background, clothing, or non-skin area, OR (2) the image is cluttered with many irrelevant objects (e.g. furniture, multiple body parts unrelated to the lesion, busy backgrounds) that would confuse lesion analysis; true otherwise. A ruler or scale marker next to the lesion is acceptable.
+- "framing_ok": false if (1) skin or the lesion occupies less than roughly 30% of the image frame, leaving too much background, clothing, or non-skin area, OR (2) the image is cluttered with many irrelevant objects that would confuse lesion analysis; true otherwise. A ruler or scale marker next to the lesion is acceptable.
 
 You must respond in English only. Return ONLY a valid JSON object, no extra text:
 {
   "MEL": <number>, "BCC": <number>, "AKIEC": <number>,
-  "NV": <number>, "BKL": <number>, "DF": <number>, "VASC": <number>,
-  "WART": <number>, "ECZEMA": <number>, "PSORIASIS": <number>,
-  "ACNE": <number>, "SEBDERM": <number>, "ROSACEA": <number>,
-  "TINEA": <number>, "VITILIGO": <number>, "OTHER": <number>,
   "lighting_ok": <true or false>,
   "framing_ok": <true or false>
 }"""
 
 
-def _parse_probabilities(text: str) -> tuple[dict[str, float], bool]:
+def _parse_probabilities(text: str) -> tuple[dict[str, float], bool, bool]:
     text = re.sub(r"```(?:json)?", "", text).strip().rstrip("`").strip()
     raw  = json.loads(text)
     probs = {k: float(raw[k]) for k in ALL_CLASSES if k in raw}
@@ -87,15 +53,8 @@ def _parse_probabilities(text: str) -> tuple[dict[str, float], bool]:
     return probs, lighting_ok, framing_ok
 
 
-def _normalize(probs: dict[str, float]) -> dict[str, float]:
-    total = sum(probs.values())
-    if total == 0:
-        return {k: round(100 / len(probs), 2) for k in probs}
-    return {k: round(v * 100 / total, 2) for k, v in probs.items()}
-
-
 def _aggregate_max(runs: list[dict[str, float]]) -> dict[str, float]:
-    """每个类别独立取所有 run 中的最大值，不做归一化。"""
+    """每个类别独立取所有 run 中的最大值。"""
     return {
         cls: round(max(r[cls] for r in runs), 2)
         for cls in ALL_CLASSES
@@ -103,22 +62,14 @@ def _aggregate_max(runs: list[dict[str, float]]) -> dict[str, float]:
 
 
 def _build_result(filename: str, probs: dict[str, float]) -> dict:
-    cancer     = {k: probs[k] for k in ALL_CLASSES if k in CANCER_CLASSES}
-    non_cancer = {
-        k: probs[k] for k in ALL_CLASSES
-        if k not in CANCER_CLASSES and probs[k] > NON_CANCER_THRESHOLD
-    }
     top          = max(probs, key=probs.get)
-    # 多次取 max 后各类别独立，cancer_total 用癌症类中的最高值
-    cancer_total = round(max(cancer.values()), 2)
+    cancer_total = round(max(probs.values()), 2)
     return {
         "filename":       filename,
-        "cancer":         cancer,
-        "non_cancer":     non_cancer,
+        "cancer":         probs,
         "top_prediction": top,
         "cancer_total":   cancer_total,
         "is_high_risk":   cancer_total >= 50,
-        "all_probs":      probs,
     }
 
 
@@ -151,7 +102,7 @@ def analyze_file(filepath: str, n_runs: int = N_RUNS) -> dict:
     for _ in range(n_runs):
         response = _generate_with_retry(img)
         probs, lighting_ok, framing_ok = _parse_probabilities(response.text)
-        runs.append(_normalize(probs))
+        runs.append(probs)
         lighting_votes.append(lighting_ok)
         framing_votes.append(framing_ok)
 

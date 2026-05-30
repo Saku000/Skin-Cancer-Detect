@@ -13,25 +13,9 @@ const resultsSection = document.getElementById('resultsSection');
 const resultsContainer = document.getElementById('resultsContainer');
 
 const CLASS_LABEL = {
-  // Malignant
-  MEL:       'Melanoma (MEL)',
-  BCC:       'Basal Cell Carcinoma (BCC)',
-  AKIEC:     'Actinic Keratosis / SCC (AKIEC)',
-  // Benign — dermoscopic
-  NV:        'Melanocytic Nevi (NV)',
-  BKL:       'Benign Keratosis (BKL)',
-  DF:        'Dermatofibroma (DF)',
-  VASC:      'Vascular Lesion (VASC)',
-  // Common skin conditions
-  WART:      'Wart / Verruca',
-  ECZEMA:    'Eczema / Dermatitis',
-  PSORIASIS: 'Psoriasis',
-  ACNE:      'Acne',
-  SEBDERM:   'Seborrheic Dermatitis',
-  ROSACEA:   'Rosacea',
-  TINEA:     'Tinea / Fungal Infection',
-  VITILIGO:  'Vitiligo',
-  OTHER:     'Other Condition',
+  MEL:   'Melanoma (MEL)',
+  BCC:   'Basal Cell Carcinoma (BCC)',
+  AKIEC: 'Actinic Keratosis / SCC (AKIEC)',
 };
 
 let selectedFiles = [];
@@ -685,13 +669,6 @@ function buildResultCard(result, file) {
           ${Object.entries(result.cancer).map(([cls, p]) => probRow(cls, p, 'cancer')).join('')}
         </div>
 
-        ${Object.keys(result.non_cancer).length ? `
-        <div>
-          <div class="divider"></div>
-          <div class="section-label" style="margin-top:16px;">Other conditions &gt;20%</div>
-          ${Object.entries(result.non_cancer).map(([cls, p]) => probRow(cls, p, 'benign')).join('')}
-        </div>` : ''}
-
         <div>
           <div class="top-chip">Top prediction &nbsp;·&nbsp; <span>${result.top_prediction}</span></div>
         </div>
@@ -832,11 +809,6 @@ function _openGalleryDetail(item) {
       </div>
       <div class="section-label">Malignant probabilities</div>
       ${Object.entries(r.cancer).map(([cls, p]) => probRow(cls, p, 'cancer')).join('')}
-      ${Object.keys(r.non_cancer || {}).length ? `
-        <div class="divider" style="margin:14px 0"></div>
-        <div class="section-label">Other conditions &gt;20%</div>
-        ${Object.entries(r.non_cancer).map(([cls, p]) => probRow(cls, p, 'benign')).join('')}
-      ` : ''}
       <div style="margin-top:14px">
         <div class="top-chip">Top prediction &nbsp;·&nbsp; <span>${r.top_prediction}</span></div>
       </div>
