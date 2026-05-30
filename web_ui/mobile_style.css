@@ -544,8 +544,9 @@ body::before {
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
-.thumb-badge.high { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(255,77,109,0.3); }
-.thumb-badge.low  { background: var(--green-dim);  color: var(--green); border: 1px solid rgba(0,212,140,0.3); }
+.thumb-badge.high   { background: var(--red-dim);          color: var(--red);   border: 1px solid rgba(255,77,109,0.3); }
+.thumb-badge.medium { background: rgba(251,146,60,0.1);   color: #fb923c;      border: 1px solid rgba(251,146,60,0.3); }
+.thumb-badge.low    { background: var(--green-dim);        color: var(--green); border: 1px solid rgba(0,212,140,0.3); }
 
 .gallery-empty {
   flex: 1;
@@ -815,8 +816,9 @@ body::before {
   font-size: 12px;
   font-weight: 600;
 }
-.risk-banner.high { background: var(--red-dim);   border: 1px solid rgba(255,77,109,0.25);  color: var(--red); }
-.risk-banner.low  { background: var(--green-dim);  border: 1px solid rgba(0,212,140,0.2);    color: var(--green); }
+.risk-banner.high   { background: var(--red-dim);        border: 1px solid rgba(255,77,109,0.25); color: var(--red); }
+.risk-banner.medium { background: rgba(251,146,60,0.1); border: 1px solid rgba(251,146,60,0.3);  color: #fb923c; }
+.risk-banner.low    { background: var(--green-dim);       border: 1px solid rgba(0,212,140,0.2);   color: var(--green); }
 
 .risk-pct {
   margin-left: auto;

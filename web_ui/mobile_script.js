@@ -107,6 +107,7 @@ function closeSheet() {
 }
 
 navUpload.addEventListener('click',       openSheet);
+document.getElementById('addMoreMobileBtn').addEventListener('click', openSheet);
 sheetOverlay.addEventListener('click',    closeSheet);
 btnSheetCancel.addEventListener('click',  closeSheet);
 
@@ -301,11 +302,19 @@ analyseBtn.addEventListener('click', async () => {
   }
 });
 
+// ── Risk helpers ──────────────────────────────────────────────────────────────
+function riskClass(r) { return r.risk_level || 'low'; }
+function riskIcon(r)  { return r.risk_level === 'high' ? '⚠️' : r.risk_level === 'medium' ? '🔶' : '✅'; }
+function riskText(r)  {
+  if (r.risk_level === 'high')   return 'High Risk — Malignant features detected';
+  if (r.risk_level === 'medium') return 'Medium Risk — Further evaluation advised';
+  return 'Low Risk — Likely benign';
+}
+
 // ── Card Builders ─────────────────────────────────────────────────────────────
 
 function buildResultCard(result, file) {
   const imgUrl  = file ? URL.createObjectURL(file) : '';
-  const isHigh  = result.is_high_risk;
   const pct     = result.cancer_total;
 
   const cancerRows = Object.entries(result.cancer)
@@ -319,9 +328,9 @@ function buildResultCard(result, file) {
     </div>
     <div class="rcm-body">
       <div class="rcm-filename">${result.filename}</div>
-      <div class="risk-banner ${isHigh ? 'high' : 'low'}">
-        <span>${isHigh ? '⚠️' : '✅'}</span>
-        <span style="flex:1">${isHigh ? 'High Risk — Malignant features detected' : 'Low Risk — Likely benign'}</span>
+      <div class="risk-banner ${riskClass(result)}">
+        <span>${riskIcon(result)}</span>
+        <span style="flex:1">${riskText(result)}</span>
         <span class="risk-pct">${pct}%</span>
       </div>
       <div class="section-label-mobile">Malignant probabilities</div>
@@ -416,10 +425,12 @@ function renderGallery() {
   items.forEach(item => {
     const thumb = document.createElement('div');
     thumb.className = 'gallery-thumb';
-    const isHigh = item.result?.is_high_risk;
+    const rc = riskClass(item.result || {});
+    const rl = item.result?.risk_level || 'low';
+    const badgeLabel = rl === 'high' ? 'High' : rl === 'medium' ? 'Med' : 'Low';
     thumb.innerHTML = `
       <img src="${item.thumb}" alt="${item.filename}" loading="lazy" />
-      <div class="thumb-badge ${isHigh ? 'high' : 'low'}">${isHigh ? 'High' : 'Low'}</div>
+      <div class="thumb-badge ${rc}">${badgeLabel}</div>
     `;
     thumb.addEventListener('click', () => openGalleryModal(item));
     galleryGrid.appendChild(thumb);
@@ -432,8 +443,7 @@ document.getElementById('galleryClearAllBtn').addEventListener('click', () => {
 });
 
 function openGalleryModal(item) {
-  const r      = item.result;
-  const isHigh = r.is_high_risk;
+  const r = item.result;
 
   galleryModalImg.src = item.thumb;
   galleryModalImg.alt = r.filename;
@@ -443,9 +453,9 @@ function openGalleryModal(item) {
 
   galleryModalResult.innerHTML = `
     <div class="rcm-filename">${r.filename}</div>
-    <div class="risk-banner ${isHigh ? 'high' : 'low'}">
-      <span>${isHigh ? '⚠️' : '✅'}</span>
-      <span style="flex:1">${isHigh ? 'High Risk — Malignant features detected' : 'Low Risk — Likely benign'}</span>
+    <div class="risk-banner ${riskClass(r)}">
+      <span>${riskIcon(r)}</span>
+      <span style="flex:1">${riskText(r)}</span>
       <span class="risk-pct">${r.cancer_total}%</span>
     </div>
     <div class="section-label-mobile">Malignant probabilities</div>

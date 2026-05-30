@@ -61,6 +61,14 @@ def _aggregate_max(runs: list[dict[str, float]]) -> dict[str, float]:
     }
 
 
+def _risk_level(cancer_total: float) -> str:
+    if cancer_total >= 30:
+        return "high"
+    if cancer_total >= 15:
+        return "medium"
+    return "low"
+
+
 def _build_result(filename: str, probs: dict[str, float]) -> dict:
     top          = max(probs, key=probs.get)
     cancer_total = round(max(probs.values()), 2)
@@ -69,7 +77,7 @@ def _build_result(filename: str, probs: dict[str, float]) -> dict:
         "cancer":         probs,
         "top_prediction": top,
         "cancer_total":   cancer_total,
-        "is_high_risk":   cancer_total >= 50,
+        "risk_level":     _risk_level(cancer_total),
     }
 
 

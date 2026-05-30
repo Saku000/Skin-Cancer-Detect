@@ -77,7 +77,7 @@ def _build_context(results: list = None) -> str:
                 ctx += f"- {r.get('filename', '?')}: analysis failed\n"
                 continue
             top        = r.get("top_prediction", "?")
-            risk_level = "requires urgent attention" if r.get("is_high_risk") else "appears low risk"
+            risk_level = {"high": "requires urgent attention", "medium": "warrants further evaluation"}.get(r.get("risk_level", "low"), "appears low risk")
             ctotal     = r.get("cancer_total", 0)
             cancer_str = ", ".join(f"{k}={v}%" for k, v in r.get("cancer", {}).items())
             ctx += (

@@ -657,6 +657,12 @@ header {
   color: var(--red);
 }
 
+.risk-banner.medium {
+  background: rgba(251,146,60,0.1);
+  border: 1px solid rgba(251,146,60,0.3);
+  color: #fb923c;
+}
+
 .risk-banner.low {
   background: var(--green-dim);
   border: 1px solid rgba(0,212,140,0.2);
@@ -1395,8 +1401,9 @@ header {
   border-radius: 50%;
   border: 1.5px solid rgba(0,0,0,0.6);
 }
-.risk-dot.high { background: var(--red); box-shadow: 0 0 5px rgba(255,77,109,0.7); }
-.risk-dot.low  { background: var(--green); box-shadow: 0 0 5px rgba(0,212,140,0.7); }
+.risk-dot.high   { background: var(--red);   box-shadow: 0 0 5px rgba(255,77,109,0.7); }
+.risk-dot.medium { background: #fb923c;      box-shadow: 0 0 5px rgba(251,146,60,0.7); }
+.risk-dot.low    { background: var(--green); box-shadow: 0 0 5px rgba(0,212,140,0.7); }
 
 /* ─── Gallery Empty State ────────────────────────────────── */
 .gallery-empty-state {

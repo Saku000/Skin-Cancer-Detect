@@ -640,11 +640,19 @@ analyseBtn.addEventListener('click', async () => {
   }
 });
 
+/* ── Risk helpers ── */
+function riskClass(r) { return r.risk_level || 'low'; }
+function riskIcon(r)  { return r.risk_level === 'high' ? '⚠️' : r.risk_level === 'medium' ? '🔶' : '✅'; }
+function riskText(r)  {
+  if (r.risk_level === 'high')   return 'High Risk — Malignant features detected';
+  if (r.risk_level === 'medium') return 'Medium Risk — Further evaluation advised';
+  return 'Low Risk — Likely benign';
+}
+
 /* ── Card Builders ── */
 function buildResultCard(result, file) {
-  const imgUrl     = file ? URL.createObjectURL(file) : '';
-  const isHighRisk = result.is_high_risk;
-  const pct        = result.cancer_total;
+  const imgUrl = file ? URL.createObjectURL(file) : '';
+  const pct    = result.cancer_total;
 
   const card = document.createElement('div');
   card.className = 'result-card';
@@ -656,11 +664,9 @@ function buildResultCard(result, file) {
       </div>
       <div class="card-analysis">
 
-        <div class="risk-banner ${isHighRisk ? 'high' : 'low'}">
-          <span class="risk-icon">${isHighRisk ? '⚠️' : '✅'}</span>
-          <div class="risk-text">
-            ${isHighRisk ? 'High Risk — Malignant features detected' : 'Low Risk — Likely benign'}
-          </div>
+        <div class="risk-banner ${riskClass(result)}">
+          <span class="risk-icon">${riskIcon(result)}</span>
+          <div class="risk-text">${riskText(result)}</div>
           <div class="risk-pct">${pct}%</div>
         </div>
 
@@ -783,10 +789,9 @@ function _renderGalleryGrid() {
   items.forEach(item => {
     const thumb = document.createElement('div');
     thumb.className = 'gallery-thumb';
-    const isHigh = item.result?.is_high_risk;
     thumb.innerHTML = `
       <img src="${item.thumb}" alt="${item.filename}" loading="lazy" />
-      <div class="risk-dot ${isHigh ? 'high' : 'low'}"></div>
+      <div class="risk-dot ${riskClass(item.result || {})}"></div>
     `;
     thumb.addEventListener('click', () => _openGalleryDetail(item));
     grid.appendChild(thumb);
@@ -800,11 +805,10 @@ function _openGalleryDetail(item) {
   const resultEl = document.getElementById('galleryDetailResult');
   const r = item.result;
   if (r && !r.error) {
-    const isHigh = r.is_high_risk;
     resultEl.innerHTML = `
-      <div class="risk-banner ${isHigh ? 'high' : 'low'}" style="margin-bottom:16px">
-        <span class="risk-icon">${isHigh ? '⚠️' : '✅'}</span>
-        <div class="risk-text">${isHigh ? 'High Risk — Malignant features detected' : 'Low Risk — Likely benign'}</div>
+      <div class="risk-banner ${riskClass(r)}" style="margin-bottom:16px">
+        <span class="risk-icon">${riskIcon(r)}</span>
+        <div class="risk-text">${riskText(r)}</div>
         <div class="risk-pct">${r.cancer_total}%</div>
       </div>
       <div class="section-label">Malignant probabilities</div>
