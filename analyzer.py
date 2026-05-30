@@ -102,12 +102,27 @@ def _generate_with_retry(img, max_retries: int = 4, base_delay: float = 5.0):
 
 
 def analyze_file(filepath: str, n_runs: int = N_RUNS) -> dict:
-    """跑 n_runs 次，每个类别取最大概率后返回结果。"""
-    img  = Image.open(filepath).convert("RGB")
-    runs = []
-    lighting_votes = []
-    framing_votes  = []
-    for _ in range(n_runs):
+    """Run n_runs passes; first pass also acts as a quality gate."""
+    img   = Image.open(filepath).convert("RGB")
+    fname = os.path.basename(filepath)
+
+    # First run — quality gate
+    response = _generate_with_retry(img)
+    probs, lighting_ok, framing_ok = _parse_probabilities(response.text)
+
+    if not lighting_ok or not framing_ok:
+        return {
+            "filename":    fname,
+            "lighting_ok": lighting_ok,
+            "framing_ok":  framing_ok,
+            "skipped":     True,
+        }
+
+    runs           = [probs]
+    lighting_votes = [lighting_ok]
+    framing_votes  = [framing_ok]
+
+    for _ in range(n_runs - 1):
         response = _generate_with_retry(img)
         probs, lighting_ok, framing_ok = _parse_probabilities(response.text)
         runs.append(probs)
@@ -115,8 +130,8 @@ def analyze_file(filepath: str, n_runs: int = N_RUNS) -> dict:
         framing_votes.append(framing_ok)
 
     agg_probs = _aggregate_max(runs)
-    result = _build_result(os.path.basename(filepath), agg_probs)
-    majority = len(runs) / 2
+    result    = _build_result(fname, agg_probs)
+    majority  = len(runs) / 2
     result["lighting_ok"] = (sum(lighting_votes) > majority)
     result["framing_ok"]  = (sum(framing_votes)  > majority)
     return result

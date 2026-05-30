@@ -554,9 +554,9 @@ analyseBtn.addEventListener('click', async () => {
     resultsSection.style.display = 'block';
     data.results.forEach((result, idx) => {
       const file = selectedFiles.find(f => f.name === result.filename);
-      const card = result.error
-        ? buildErrorCard(result)
-        : buildResultCard(result, file);
+      const card = result.error   ? buildErrorCard(result)
+                 : result.skipped ? buildSkippedCard(result, file)
+                 :                  buildResultCard(result, file);
       resultsContainer.appendChild(card);
       card.style.animationDelay = `${idx * 0.1}s`;
     });
@@ -622,7 +622,7 @@ analyseBtn.addEventListener('click', async () => {
 
     // Save to gallery (async, non-blocking)
     data.results.forEach(result => {
-      if (!result.error) {
+      if (!result.error && !result.skipped) {
         const file = selectedFiles.find(f => f.name === result.filename);
         addToGallery(result, file);
       }
@@ -701,6 +701,32 @@ function buildErrorCard(result) {
   const card = document.createElement('div');
   card.className = 'error-card';
   card.textContent = `⚠ ${result.filename}: ${result.error}`;
+  return card;
+}
+
+function buildSkippedCard(result, file) {
+  const imgUrl = file ? URL.createObjectURL(file) : '';
+  const reason = !result.lighting_ok
+    ? 'Poor lighting — the image is too dark or overexposed.'
+    : 'Poor framing — the lesion does not fill enough of the frame, or the image is too cluttered.';
+  const card = document.createElement('div');
+  card.className = 'result-card';
+  card.innerHTML = `
+    <div class="card-inner">
+      <div class="card-image">
+        <img src="${imgUrl}" alt="${result.filename}" />
+        <div class="img-label">${result.filename}</div>
+      </div>
+      <div class="card-analysis">
+        <div class="skipped-banner">
+          <span class="skipped-icon">📷</span>
+          <div>
+            <div class="skipped-title">Analysis skipped</div>
+            <div class="skipped-reason">${reason} Please retake the photo and try again.</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
   return card;
 }
 

@@ -77,6 +77,12 @@ def _build_context(results: list = None) -> str:
             if "error" in r:
                 ctx += f"- {r.get('filename', '?')}: analysis failed\n"
                 continue
+            if r.get("skipped"):
+                reasons = []
+                if not r.get("lighting_ok", True): reasons.append("poor lighting")
+                if not r.get("framing_ok",  True): reasons.append("poor framing/coverage")
+                ctx += f"- {r.get('filename', '?')}: analysis skipped ({', '.join(reasons)}) — ask user to retake\n"
+                continue
             top        = r.get("top_prediction", "?")
             risk_level = {"high": "requires urgent attention", "medium": "warrants further evaluation"}.get(r.get("risk_level", "low"), "appears low risk")
             ctotal     = r.get("cancer_total", 0)

@@ -232,12 +232,14 @@ analyseBtn.addEventListener('click', async () => {
 
     data.results.forEach((result, idx) => {
       const file = selectedFiles.find(f => f.name === result.filename);
-      const card = result.error ? buildErrorCard(result) : buildResultCard(result, file);
+      const card = result.error   ? buildErrorCard(result)
+                 : result.skipped ? buildSkippedCard(result, file)
+                 :                  buildResultCard(result, file);
       card.style.animationDelay = `${idx * 0.07}s`;
       reportResults.appendChild(card);
 
-      if (!result.error && file) {
-        addToGallery(result, file); // async, non-blocking
+      if (!result.error && !result.skipped && file) {
+        addToGallery(result, file);
       }
     });
 
@@ -355,6 +357,30 @@ function buildErrorCard(result) {
   const card = document.createElement('div');
   card.className = 'error-card-mobile';
   card.textContent = `⚠ ${result.filename}: ${result.error}`;
+  return card;
+}
+
+function buildSkippedCard(result, file) {
+  const imgUrl = file ? URL.createObjectURL(file) : '';
+  const reason = !result.lighting_ok
+    ? 'Poor lighting — image is too dark or overexposed.'
+    : 'Poor framing — lesion not visible enough or image too cluttered.';
+  const card = document.createElement('div');
+  card.className = 'result-card-mobile';
+  card.innerHTML = `
+    <div class="rcm-img-wrap">
+      <img src="${imgUrl}" alt="${result.filename}" loading="lazy" />
+    </div>
+    <div class="rcm-body">
+      <div class="rcm-filename">${result.filename}</div>
+      <div class="skipped-banner-mobile">
+        <span>📷</span>
+        <div>
+          <div class="skipped-title-mobile">Analysis skipped</div>
+          <div class="skipped-reason-mobile">${reason} Please retake the photo.</div>
+        </div>
+      </div>
+    </div>`;
   return card;
 }
 
