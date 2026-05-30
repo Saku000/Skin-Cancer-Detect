@@ -58,13 +58,12 @@ SYSTEM_BASE = (
 )
 
 SUMMARY_REQUEST = (
-    "Please provide a warm, reassuring summary of these skin analysis results. "
-    "Start by acknowledging that receiving results can feel worrying. "
-    "Describe the overall risk level in simple, calm language. "
+    "Please provide a warm summary of these skin analysis results. "
     "IMPORTANT: Only mention a specific condition (MEL, BCC, AKIEC) by name if its probability is above 15%. "
-    "If all probabilities are low, say the screening did not find significant signs of concern — do NOT list conditions with zero or near-zero scores. "
-    "End with an encouraging next step. "
-    "Keep it to 3-4 sentences. Plain text only, no bullet points."
+    "Do NOT list conditions with zero or near-zero scores. "
+    "If the overall risk level is LOW: lead with great news and a celebratory, relieved tone — tell the user their results look reassuring and there is no significant sign of concern. Keep it upbeat and positive. "
+    "If the overall risk level is MEDIUM or HIGH: start by acknowledging results can feel worrying, describe the finding calmly, and end with an encouraging next step. "
+    "Keep it to 2-3 sentences. Plain text only, no bullet points."
 )
 
 
