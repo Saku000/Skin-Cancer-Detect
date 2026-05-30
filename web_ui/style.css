@@ -292,13 +292,21 @@ header {
 .upload-zone {
   border: 2px dashed var(--border);
   border-radius: var(--radius);
-  padding: 56px 32px;
+  padding: 32px;
   text-align: center;
   cursor: pointer;
   transition: var(--transition);
   background: var(--bg-card);
   position: relative;
   overflow: hidden;
+  height: calc(100vh - 160px);
+  min-height: 480px;
+  max-height: 820px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .upload-zone::before {
