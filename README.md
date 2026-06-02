@@ -12,28 +12,7 @@ AI-powered skin lesion analysis using Gemini Vision. Upload dermoscopy images an
 | BCC | Basal Cell Carcinoma |
 | AKIEC | Actinic Keratosis / Squamous Cell Carcinoma |
 
-**Benign — dermoscopic (ISIC)**
 
-| Code | Full Name |
-|------|-----------|
-| NV | Melanocytic Nevi |
-| BKL | Benign Keratosis-like Lesions |
-| DF | Dermatofibroma |
-| VASC | Vascular Lesions |
-
-**Common skin conditions**
-
-| Code | Full Name |
-|------|-----------|
-| WART | Wart / Verruca |
-| ECZEMA | Eczema / Dermatitis |
-| PSORIASIS | Psoriasis |
-| ACNE | Acne |
-| SEBDERM | Seborrheic Dermatitis |
-| ROSACEA | Rosacea |
-| TINEA | Tinea / Fungal Infection |
-| VITILIGO | Vitiligo |
-| OTHER | Other / Unclassified |
 
 ## Prerequisites
 
