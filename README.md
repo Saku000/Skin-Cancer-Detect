@@ -1,39 +1,31 @@
-# Skin Cancer Detection
+# Skin Lesion Detection
 
-AI-powered skin lesion analysis using Gemini Vision. Upload dermoscopy images and get probability estimates across 16 categories, with malignancy risk assessment.
+AI-powered skin cancer screening using Gemini Vision. Upload dermoscopy or clinical images and get independent probability estimates for three malignant conditions, with automatic image quality gating.
 
-## Classes
+## Live Demo
 
-**Malignant**
+| Platform | URL |
+|----------|-----|
+| Desktop | https://skin-cancer-detect.onrender.com/ui/index.html |
+| Mobile  | https://skin-cancer-detect.onrender.com/ui/mobile.html |
 
-| Code | Full Name |
-|------|-----------|
-| MEL | Melanoma |
-| BCC | Basal Cell Carcinoma |
-| AKIEC | Actinic Keratosis / Squamous Cell Carcinoma |
+> First load may take ~30 seconds (free tier cold start).
 
-**Benign — dermoscopic (ISIC)**
+## Detected Conditions
 
-| Code | Full Name |
-|------|-----------|
-| NV | Melanocytic Nevi |
-| BKL | Benign Keratosis-like Lesions |
-| DF | Dermatofibroma |
-| VASC | Vascular Lesions |
+| Code | Full Name | Type |
+|------|-----------|------|
+| MEL | Melanoma | Malignant |
+| BCC | Basal Cell Carcinoma | Malignant |
+| AKIEC | Actinic Keratosis / Squamous Cell Carcinoma | Malignant |
 
-**Common skin conditions**
+## Risk Levels
 
-| Code | Full Name |
-|------|-----------|
-| WART | Wart / Verruca |
-| ECZEMA | Eczema / Dermatitis |
-| PSORIASIS | Psoriasis |
-| ACNE | Acne |
-| SEBDERM | Seborrheic Dermatitis |
-| ROSACEA | Rosacea |
-| TINEA | Tinea / Fungal Infection |
-| VITILIGO | Vitiligo |
-| OTHER | Other / Unclassified |
+| Level | Threshold |
+|-------|-----------|
+| Low | < 15% |
+| Medium | 15 – 30% |
+| High | > 30% |
 
 ## Prerequisites
 
@@ -56,7 +48,7 @@ GEMINI_API_KEY=your_api_key_here
 
 Double-click `setup.bat`
 
-**macOS**
+**macOS / Linux**
 
 ```bash
 chmod +x setup.sh start.sh
@@ -69,22 +61,22 @@ chmod +x setup.sh start.sh
 
 Double-click `start.bat`
 
-**macOS**
+**macOS / Linux**
 
 ```bash
 ./start.sh
 ```
 
-The app will start the server and open `http://127.0.0.1:8000/ui` in your browser automatically.
+The app starts the server and opens `http://127.0.0.1:8000/ui` in your browser.
 
 ## Usage
 
 1. Drag and drop skin lesion images into the upload zone, or click **Browse Files**
 2. Click **Analyse Images**
-3. Results show:
-   - Risk level (High / Low)
-   - Malignant class probabilities (MEL, BCC, AKIEC)
-   - Benign class probabilities above 20%
+3. Images with poor lighting or framing are automatically rejected with a retake prompt
+4. Results show:
+   - Risk level (Low / Medium / High)
+   - Independent probability for each malignant class
    - Top prediction
 
 Supported formats: JPG, PNG, WebP
@@ -92,6 +84,4 @@ Supported formats: JPG, PNG, WebP
 ## Notes
 
 - This tool is for **research and educational purposes only**. It is not a medical diagnostic device.
-- The model performs best with standard dermoscopy images. Regular photos may produce unreliable results.
-- The dataset used for training (ISIC 2018/2019) does not include normal skin, so the model cannot identify healthy skin — it will always assign the image to one of the 7 lesion categories.
 - Always consult a qualified dermatologist for clinical decisions.
