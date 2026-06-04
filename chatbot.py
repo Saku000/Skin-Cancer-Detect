@@ -6,6 +6,7 @@ Endpoints consumed:
     POST /chat/summary  -> generate_summary()
 """
 
+import json
 import os
 import re
 from google import genai
@@ -199,11 +200,65 @@ def generate_summary(results: list) -> str:
     return _call(prompt)
 
 
-_FACILITY_KEYWORDS = re.compile(
-    r'hospital|clinic|dermatologist|doctor|facility|facilities|'
-    r'nearest|closest|near me|nearby|around|close to|找医|附近|最近',
-    re.IGNORECASE
-)
+def _detect_intent(message: str, history: list) -> dict:
+    """
+    Ask Gemini (no search) to detect whether the user wants nearby medical facilities
+    and extract their location. Returns {"wants_facilities": bool, "user_location": str|None}.
+    This replaces the keyword list so informal, multilingual, or atypical phrasing still works.
+    """
+    recent = "\n".join(
+        f"{h['role']}: {h['content']}" for h in history[-4:]
+    ) if history else "(none)"
+    prompt = (
+        "Analyze the latest user message and recent history below.\n"
+        "Return ONLY a JSON object — no explanation, no markdown:\n"
+        '{"wants_facilities": true/false, "user_location": "City, State or full address or null"}\n\n'
+        "Rules:\n"
+        "- wants_facilities = true if the user wants to find nearby hospitals, clinics, "
+        "dermatologists, or any medical facility.\n"
+        "- user_location = the place the user wants to search NEAR (their own location, "
+        "NOT a facility they are asking about). Normalize to standard US format. "
+        "null if no location is mentioned.\n"
+        "- n = how many facilities the user wants (default 4 if unspecified).\n\n"
+        f"Recent history:\n{recent}\n\n"
+        f"Latest message: {message}"
+    )
+    try:
+        raw = _call(prompt, search=False).strip()
+        m   = re.search(r'\{.*\}', raw, re.DOTALL)
+        if m:
+            data = json.loads(m.group())
+            return {
+                "wants_facilities": bool(data.get("wants_facilities")),
+                "user_location":    data.get("user_location") or None,
+                "n":                int(data.get("n", 4)),
+            }
+    except Exception as e:
+        print(f"[chat] intent detection failed: {e}")
+    return {"wants_facilities": False, "user_location": None, "n": 4}
+
+
+def _find_facilities_via_ai(location: str, n: int) -> list[dict]:
+    """Gemini web-search fallback when Overpass returns nothing."""
+    prompt = (
+        f"Search for the {n} nearest dermatology clinics, skin cancer centers, or hospitals "
+        f"to: {location}\n"
+        "Return ONLY a JSON array — no explanation, no markdown. Each element:\n"
+        '{"name": "...", "address": "123 Main St, City, CA 90000", "phone": "(000) 000-0000"}\n'
+        "Only include facilities with a confirmed full street address. Order by distance, closest first."
+    )
+    try:
+        raw = _call(prompt, search=True).strip()
+        m   = re.search(r'\[.*\]', raw, re.DOTALL)
+        if m:
+            data = json.loads(m.group())
+            return [
+                d for d in data
+                if isinstance(d, dict) and d.get("name") and d.get("address")
+            ][:n]
+    except Exception as e:
+        print(f"[chat] AI facility search failed: {e}")
+    return []
 
 
 def _format_facilities_prompt(fac_list: list[dict], user_location: str, n: int) -> str:
@@ -225,81 +280,62 @@ def _format_facilities_prompt(fac_list: list[dict], user_location: str, n: int) 
     for i, f in enumerate(fac_list, 1):
         addr  = f.get("address") or "Address not available"
         phone = f.get("phone")   or "Phone not available"
-        dist  = f.get("distance_mi", "?")
-        lines.append(
-            f"{i}. {f['name']}\n"
-            f"   Address: {addr}\n"
-            f"   Phone: {phone}\n"
-            f"   Distance: {dist} mi"
-        )
+        dist  = f.get("distance_mi")
+        entry = f"{i}. {f['name']}\n   Address: {addr}\n   Phone: {phone}"
+        if dist is not None:
+            entry += f"\n   Distance: {dist} mi"
+        lines.append(entry)
     return "\n".join(lines)
 
-
-def _ai_normalize_location(text: str) -> str | None:
-    """
-    Ask Gemini (no search) to extract and standardize a US location from free-form text.
-    Used as fallback when regex extraction fails (e.g. '73000verano rd irvine ca').
-    """
-    prompt = (
-        "Extract the US location from the text below and return it as a standard address "
-        "(e.g. '73000 Verano Rd, Irvine, CA 92617') or at minimum 'City, State'. "
-        "Return ONLY the address string, no explanation. "
-        "If no location is present, return NONE.\n\n"
-        f"Text: {text}"
-    )
-    try:
-        result = _call(prompt, search=False).strip().strip('"').strip("'")
-        if not result or result.upper() == "NONE":
-            return None
-        return result
-    except Exception:
-        return None
 
 
 def chat_reply(message: str, history: list, results: list = None) -> dict:
     """Multi-turn chat response. Returns reply text plus structured facility data."""
 
-    # ── Deterministic facility lookup via Overpass API ────────────────────────
-    asking_facilities = bool(_FACILITY_KEYWORDS.search(message))
-    if asking_facilities:
-        # 1. Try regex first (fast, no API call)
-        raw_loc = (
-            _extract_location(message)
-            or _extract_location(" ".join(h["content"] for h in history if h["role"] == "user"))
-        )
-        # 2. Regex failed → ask AI to normalize the address (handles "73000verano rd irvine ca")
-        if not raw_loc:
-            raw_loc = _ai_normalize_location(message)
-            if raw_loc:
-                print(f"[chat] AI-normalized location: {raw_loc!r}")
+    # ── Step 1: Gemini intent detection (no search, not shown to user) ────────
+    intent = _detect_intent(message, history)
+    print(f"[chat] intent={intent}")
 
-        # How many facilities requested? default 4
-        n_match = re.search(r'(\d+)\s*(?:家|个|places?|facilities|hospitals?|clinics?)', message, re.IGNORECASE)
-        n_want  = int(n_match.group(1)) if n_match else 4
+    if intent["wants_facilities"] and intent["user_location"]:
+        raw_loc = intent["user_location"]
+        n_want  = intent["n"]
 
-        if raw_loc:
-            fac_list, coords = _fac.find_nearby(raw_loc, n=n_want)
-            if fac_list:
-                # Ask AI to format and warm up the pre-fetched data (no web search needed)
-                ctx         = _build_context(results)
-                fmt_prompt  = _format_facilities_prompt(fac_list, raw_loc, n_want)
-                full_prompt = f"{ctx}\n\n---\n{fmt_prompt}\n\nAssistant:"
-                reply       = _call(full_prompt, search=False)
-                if reply.startswith("Assistant:"):
-                    reply = reply[len("Assistant:"):].strip()
+        # ── Step 2: Overpass (fast, deterministic) ────────────────────────────
+        print(f"[chat] Overpass query: {raw_loc!r} n={n_want}")
+        fac_list, coords = _fac.find_nearby(raw_loc, n=n_want)
+        print(f"[chat] Overpass returned {len(fac_list)} facilities")
 
-                # Attach user location string for map geocoding
-                user_location = (
-                    _extract_ai_location(reply)
-                    or raw_loc
-                )
-                return {
-                    "reply":         reply,
-                    "facilities":    fac_list,
-                    "user_location": user_location,
-                }
+        # ── Step 3: AI web-search fallback if Overpass empty ─────────────────
+        if not fac_list:
+            print("[chat] Overpass empty — trying AI web search")
+            fac_list = _find_facilities_via_ai(raw_loc, n_want)
+            print(f"[chat] AI search returned {len(fac_list)} facilities")
 
-    # ── Fallback: standard AI reply with web search ───────────────────────────
+        if fac_list:
+            ctx         = _build_context(results)
+            fmt_prompt  = _format_facilities_prompt(fac_list, raw_loc, n_want)
+            full_prompt = f"{ctx}\n\n---\n{fmt_prompt}\n\nAssistant:"
+            reply       = _call(full_prompt, search=False)
+            if reply.startswith("Assistant:"):
+                reply = reply[len("Assistant:"):].strip()
+            reply = re.sub(r'User location:.*\n?', '', reply, flags=re.IGNORECASE).strip()
+            return {
+                "reply":         reply,
+                "facilities":    fac_list,
+                "user_location": raw_loc,
+            }
+
+        # Both Overpass and AI search failed
+        return {
+            "reply": (
+                "I wasn't able to find nearby facilities right now. "
+                "Please try searching Google Maps for dermatologists or hospitals near your location."
+            ),
+            "facilities":    [],
+            "user_location": None,
+        }
+
+    # ── Standard AI reply (no facility lookup needed) ─────────────────────────
     ctx   = _build_context(results)
     lines = [ctx, "---"]
     for msg in history:
@@ -311,19 +347,9 @@ def chat_reply(message: str, history: list, results: list = None) -> dict:
     reply  = _call(prompt, search=True)
     if reply.startswith("Assistant:"):
         reply = reply[len("Assistant:"):].strip()
-
-    parsed_fac = _parse_facilities(reply)
-    if parsed_fac:
-        user_location = (
-            _extract_ai_location(reply)
-            or _extract_location(message)
-            or _extract_location(reply)
-        )
-    else:
-        user_location = None
-
+    reply = re.sub(r'User location:.*\n?', '', reply, flags=re.IGNORECASE).strip()
     return {
         "reply":         reply,
-        "facilities":    parsed_fac,
-        "user_location": user_location,
+        "facilities":    [],
+        "user_location": None,
     }
