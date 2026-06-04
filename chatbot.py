@@ -335,11 +335,12 @@ def chat_reply(message: str, history: list, results: list = None) -> dict:
             reply       = _call(full_prompt, search=False)
             if reply.startswith("Assistant:"):
                 reply = reply[len("Assistant:"):].strip()
+            user_loc = _extract_ai_location(reply) or raw_loc
             reply = re.sub(r'User location:.*\n?', '', reply, flags=re.IGNORECASE).strip()
             return {
                 "reply":         reply,
                 "facilities":    fac_list,
-                "user_location": raw_loc,
+                "user_location": user_loc,
             }
 
         # Both Overpass and AI search failed
