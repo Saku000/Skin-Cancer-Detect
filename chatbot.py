@@ -257,10 +257,19 @@ def _find_facilities_via_ai(location: str, n: int) -> list[dict]:
         m   = re.search(r'\[.*\]', raw, re.DOTALL)
         if m:
             data = json.loads(m.group())
-            return [
+            facilities = [
                 d for d in data
                 if isinstance(d, dict) and d.get("name") and d.get("address")
             ][:n]
+            # Add lat/lon so the frontend can plot markers without its own geocoding
+            for f in facilities:
+                coords = _fac.geocode(f.get("address", ""))
+                if coords:
+                    f["lat"], f["lon"] = coords
+                    print(f"[chat] geocoded '{f['name']}' → {coords}")
+                else:
+                    print(f"[chat] geocode failed for '{f['name']}' ({f.get('address')})")
+            return facilities
     except Exception as e:
         print(f"[chat] AI facility search failed: {e}")
     return []
