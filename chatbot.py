@@ -280,7 +280,10 @@ def _format_facilities_prompt(fac_list: list[dict], user_location: str, n: int, 
     lines = [
         f"The user's message: \"{user_message}\"",
         "",
-        "Respond to everything the user asked above, warmly and in order.",
+        f"First line of your response must be exactly: User location: [normalized full address for {user_location}]",
+        "(Normalize to standard US format, e.g. '1522 El Paso Rd, Norco, CA 92860'. No label, just the line.)",
+        "",
+        "Then respond to everything the user asked above, warmly and in order.",
         f"As part of your response, include the {n} nearest medical facilities to {user_location} "
         "using the data below. Use the exact names, addresses, phones, and distances provided — "
         "do not change or add any. Omit the Distance line if not available. "
