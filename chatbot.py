@@ -194,20 +194,25 @@ def chat_reply(message: str, history: list, results: list = None) -> dict:
     lines.append(f"User: {message}")
     lines.append("Assistant:")
     prompt = "\n".join(lines)
-    reply  = _call(prompt, search=True)
+    # Disable web search: Overpass handles facility data; search causes garbled replies
+    reply  = _call(prompt, search=False)
     if reply.startswith("Assistant:"):
         reply = reply[len("Assistant:"):].strip()
 
     # ── Detect [SHOW_MAP] token in model output ───────────────────────────────
     show_map = bool(re.search(r'\[SHOW_MAP\]', reply, re.IGNORECASE))
-    reply    = re.sub(r'\[SHOW_MAP\]\s*\n?', '', reply, flags=re.IGNORECASE).strip()
+    # Extract location from AI reply BEFORE stripping hidden tokens
+    loc_from_reply = _extract_ai_location(reply)
+    # Strip hidden tokens and "User location:" line from displayed reply
+    reply = re.sub(r'\[SHOW_MAP\]\s*\n?', '', reply, flags=re.IGNORECASE)
+    reply = re.sub(r'User location:.*\n?', '', reply, flags=re.IGNORECASE).strip()
 
     if show_map:
-        # Extract location from message or history
+        # Extract location: user message → history → AI-normalized location line
         raw_loc = (
             _extract_location(message)
             or _extract_location(" ".join(h["content"] for h in history if h["role"] == "user"))
-            or _extract_ai_location(reply)
+            or loc_from_reply
         )
         if not raw_loc:
             raw_loc = _ai_normalize_location(message)
