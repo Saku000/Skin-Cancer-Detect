@@ -212,7 +212,7 @@ def _detect_intent(message: str, history: list) -> dict:
     prompt = (
         "Analyze the latest user message and recent history below.\n"
         "Return ONLY a JSON object — no explanation, no markdown:\n"
-        '{"wants_facilities": true/false, "user_location": "City, State or full address or null"}\n\n'
+        '{"wants_facilities": true/false, "user_location": "City, State or full address or null", "n": 4}\n\n'
         "Rules:\n"
         "- wants_facilities = true if the user wants to find nearby hospitals, clinics, "
         "dermatologists, or any medical facility.\n"
@@ -319,8 +319,16 @@ def chat_reply(message: str, history: list, results: list = None) -> dict:
 
         if fac_list:
             ctx         = _build_context(results)
+            hist_lines  = "\n".join(
+                f"{'User' if h['role'] == 'user' else 'Assistant'}: {h['content']}"
+                for h in history
+            )
             fmt_prompt  = _format_facilities_prompt(fac_list, raw_loc, n_want, message)
-            full_prompt = f"{ctx}\n\n---\n{fmt_prompt}\n\nAssistant:"
+            full_prompt = (
+                f"{ctx}\n\n---\n"
+                + (f"{hist_lines}\n" if hist_lines else "")
+                + f"{fmt_prompt}\n\nAssistant:"
+            )
             reply       = _call(full_prompt, search=False)
             if reply.startswith("Assistant:"):
                 reply = reply[len("Assistant:"):].strip()
