@@ -6,6 +6,7 @@ Endpoints consumed:
     POST /chat/summary  -> generate_summary()
 """
 
+import json
 import os
 import re
 from google import genai
@@ -219,6 +220,32 @@ def _ai_normalize_location(text: str) -> str | None:
         return None
 
 
+def _find_facilities_via_ai(location: str, n: int) -> list[dict]:
+    """
+    Use Gemini web search to find nearby medical facilities when Overpass fails.
+    Returns a list of dicts with name/address/phone keys (no distance_mi).
+    """
+    prompt = (
+        f"Search for the {n} nearest dermatology clinics, skin cancer centers, or hospitals to: {location}\n"
+        "Return ONLY a JSON array — no explanation, no markdown. Each element must have:\n"
+        '  {"name": "...", "address": "123 Main St, City, CA 90000", "phone": "(000) 000-0000"}\n'
+        "Only include facilities whose full street address you can confirm. "
+        "Order by distance, closest first."
+    )
+    try:
+        raw = _call(prompt, search=True).strip()
+        m   = re.search(r'\[.*\]', raw, re.DOTALL)
+        if m:
+            data = json.loads(m.group())
+            return [
+                d for d in data
+                if isinstance(d, dict) and d.get("name") and d.get("address")
+            ][:n]
+    except Exception as e:
+        print(f"[chatbot] AI facility search failed: {e}")
+    return []
+
+
 _FACILITY_KEYWORDS = re.compile(
     r'hospital|clinic|dermatologist|doctor|facility|facilities|'
     r'nearest|closest|near me|nearby|around|close to|找医|附近|最近',
@@ -248,6 +275,12 @@ def chat_reply(message: str, history: list, results: list = None) -> dict:
             print(f"[chat] calling Overpass for {raw_loc!r} n={n_want}")
             fac_list, coords = _fac.find_nearby(raw_loc, n=n_want)
             print(f"[chat] Overpass returned {len(fac_list)} facilities")
+
+            if not fac_list:
+                print("[chat] Overpass empty — falling back to AI web search")
+                fac_list = _find_facilities_via_ai(raw_loc, n_want)
+                print(f"[chat] AI search returned {len(fac_list)} facilities")
+
             if fac_list:
                 ctx        = _build_context(results)
                 fmt_prompt = _format_facilities_prompt(fac_list, raw_loc, n_want)
@@ -263,8 +296,7 @@ def chat_reply(message: str, history: list, results: list = None) -> dict:
                     "facilities":    fac_list,
                     "user_location": raw_loc,
                 }
-        # Overpass failed — give a clean response without web search
-        print(f"[chat] Overpass failed, raw_loc={raw_loc!r}")
+        print(f"[chat] all facility lookups failed, raw_loc={raw_loc!r}")
         return {
             "reply": "I wasn't able to find nearby facilities right now. Please try searching Google Maps for dermatologists or hospitals near your location.",
             "facilities": [],
