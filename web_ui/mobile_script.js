@@ -582,7 +582,7 @@ async function sendMessage(text) {
     });
     const data = await res.json();
     typing.remove();
-    const displayReply = (data.reply || '').replace(/^\[SHOW_MAP\]\n?/i, '').trim();
+    const displayReply = (data.reply || '').trim();
     appendMessage('assistant', displayReply);
     chatHistory.push({ role: 'assistant', content: displayReply });
 

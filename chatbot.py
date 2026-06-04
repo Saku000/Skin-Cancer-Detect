@@ -236,16 +236,18 @@ def chat_reply(message: str, history: list, results: list = None) -> dict:
             _extract_location(message)
             or _extract_location(" ".join(h["content"] for h in history if h["role"] == "user"))
         )
+        print(f"[chat] regex loc: {raw_loc!r}")
         if not raw_loc:
             raw_loc = _ai_normalize_location(message)
-            if raw_loc:
-                print(f"[chat] AI-normalized location: {raw_loc!r}")
+            print(f"[chat] AI-normalized loc: {raw_loc!r}")
 
         n_match = re.search(r'(\d+)\s*(?:家|个|places?|facilities|hospitals?|clinics?)', message, re.IGNORECASE)
         n_want  = int(n_match.group(1)) if n_match else 4
 
         if raw_loc:
+            print(f"[chat] calling Overpass for {raw_loc!r} n={n_want}")
             fac_list, coords = _fac.find_nearby(raw_loc, n=n_want)
+            print(f"[chat] Overpass returned {len(fac_list)} facilities")
             if fac_list:
                 ctx        = _build_context(results)
                 fmt_prompt = _format_facilities_prompt(fac_list, raw_loc, n_want)
@@ -254,17 +256,20 @@ def chat_reply(message: str, history: list, results: list = None) -> dict:
                 if reply.startswith("Assistant:"):
                     reply = reply[len("Assistant:"):].strip()
 
-                # Strip "User location:" line and prepend [SHOW_MAP] token
-                loc_from_reply = _extract_ai_location(reply)
                 reply = re.sub(r'User location:.*\n?', '', reply, flags=re.IGNORECASE).strip()
-                reply = f"[SHOW_MAP]\n{reply}"
 
-                user_location = loc_from_reply or raw_loc
                 return {
                     "reply":         reply,
                     "facilities":    fac_list,
-                    "user_location": user_location,
+                    "user_location": raw_loc,
                 }
+        # Overpass failed — give a clean response without web search
+        print(f"[chat] Overpass failed, raw_loc={raw_loc!r}")
+        return {
+            "reply": "I wasn't able to find nearby facilities right now. Please try searching Google Maps for dermatologists or hospitals near your location.",
+            "facilities": [],
+            "user_location": None,
+        }
 
     # ── Standard AI reply with web search ────────────────────────────────────
     ctx   = _build_context(results)

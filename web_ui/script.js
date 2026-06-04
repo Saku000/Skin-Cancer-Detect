@@ -329,7 +329,7 @@ async function sendMessage(text) {
     const data = await res.json();
     console.log('[chat] data keys:', Object.keys(data), '| facilities:', data.facilities?.length ?? 'none');
     typing.remove();
-    const displayReply = (data.reply || '').replace(/^\[SHOW_MAP\]\n?/i, '').trim();
+    const displayReply = (data.reply || '').trim();
     const msgEl = appendMessage('assistant', displayReply);
     chatHistory.push({ role: 'assistant', content: displayReply });
     if (data.facilities && data.facilities.length > 0) {
