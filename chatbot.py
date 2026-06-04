@@ -157,15 +157,31 @@ def _extract_location(text: str) -> str | None:
     return None
 
 
+_US_STATE_RE = (r'(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT'
+                r'|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)')
+
 def _extract_ai_location(text: str) -> str | None:
-    """Parse the 'User location: ...' line that the AI outputs when it detects a location."""
+    """Parse user location from AI reply.
+    Tries explicit 'User location: ...' line first, then falls back to
+    extracting a US address from phrases like 'near X' or 'closest to X'.
+    """
+    # 1. Explicit line
     m = re.search(r'^User location:\s*(.+)', text, re.IGNORECASE | re.MULTILINE)
-    if not m:
-        return None
-    loc = m.group(1).strip().rstrip('.')
-    if not loc or loc.lower() in ('unknown', 'not provided', 'none', 'n/a'):
-        return None
-    return loc
+    if m:
+        loc = m.group(1).strip().rstrip('.')
+        if loc and loc.lower() not in ('unknown', 'not provided', 'none', 'n/a'):
+            return loc
+
+    # 2. Address embedded in context phrases (e.g. "nearest to 1522 El Paso Rd, Norco, CA")
+    m = re.search(
+        r'(?:nearest to|closest to|near|around)\s+'
+        r'(\d+\s+[A-Za-z][\w\s.]{2,40},\s*[\w\s]+,\s*' + _US_STATE_RE + r'(?:\s+\d{5})?)',
+        text, re.IGNORECASE
+    )
+    if m:
+        return m.group(1).strip().rstrip('.')
+
+    return None
 
 
 def _parse_facilities(text: str) -> list[dict]:
@@ -280,10 +296,12 @@ def _format_facilities_prompt(fac_list: list[dict], user_location: str, n: int, 
     lines = [
         f"The user's message: \"{user_message}\"",
         "",
-        f"First line of your response must be exactly: User location: [normalized full address for {user_location}]",
-        "(Normalize to standard US format, e.g. '1522 El Paso Rd, Norco, CA 92860'. No label, just the line.)",
+        "REQUIRED — the very first line of your response must be in exactly this format:",
+        "User location: <normalize the location from the user's message above to a full US address>",
+        "Example: if the user wrote '1522 elpaso norco', write: User location: 1522 El Paso Rd, Norco, CA 92860",
+        "(This line is stripped before display — it's for internal geocoding only.)",
         "",
-        "Then respond to everything the user asked above, warmly and in order.",
+        "After that line, respond to everything the user asked above, warmly and in order.",
         f"As part of your response, include the {n} nearest medical facilities to {user_location} "
         "using the data below. Use the exact names, addresses, phones, and distances provided — "
         "do not change or add any. Omit the Distance line if not available. "
