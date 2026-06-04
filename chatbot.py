@@ -212,11 +212,11 @@ def chat_reply(message: str, history: list, results: list = None) -> dict:
     reply = re.sub(r'User location:.*\n?', '', reply, flags=re.IGNORECASE).strip()
 
     if show_map:
-        # Extract location: user message → history → AI-normalized location line
+        # AI's normalized "User location:" line is most reliable — use it first
         raw_loc = (
-            _extract_location(message)
+            loc_from_reply
+            or _extract_location(message)
             or _extract_location(" ".join(h["content"] for h in history if h["role"] == "user"))
-            or loc_from_reply
         )
         if not raw_loc:
             raw_loc = _ai_normalize_location(message)
