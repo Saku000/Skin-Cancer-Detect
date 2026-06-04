@@ -261,19 +261,23 @@ def _find_facilities_via_ai(location: str, n: int) -> list[dict]:
     return []
 
 
-def _format_facilities_prompt(fac_list: list[dict], user_location: str, n: int) -> str:
-    """Build a prompt asking AI to warmly present pre-fetched facility data."""
+def _format_facilities_prompt(fac_list: list[dict], user_location: str, n: int, user_message: str) -> str:
+    """Build a prompt asking AI to address the user's full message and include facility data."""
     lines = [
-        f"The user asked for the {n} nearest medical facilities to: {user_location}",
-        "Here is the real distance-sorted data from OpenStreetMap. "
-        "Present these results warmly and encouragingly. "
-        "Use the exact names, addresses, phones, and distances provided — do not change or add any. "
-        "Format each entry exactly as:\n"
-        "N. Name\n"
-        "   Address: ...\n"
-        "   Phone: ...\n"
-        "   Distance: X.X mi\n\n"
-        "After the list add one short warm sentence encouraging them to call ahead.",
+        f"The user's message: \"{user_message}\"",
+        "",
+        "Respond to everything the user asked above, warmly and in order.",
+        f"As part of your response, include the {n} nearest medical facilities to {user_location} "
+        "using the data below. Use the exact names, addresses, phones, and distances provided — "
+        "do not change or add any. Omit the Distance line if not available. "
+        "Format each facility as:",
+        "N. Name",
+        "   Address: ...",
+        "   Phone: ...",
+        "   Distance: X.X mi",
+        "",
+        "End with one short warm sentence encouraging them to call ahead.",
+        "Plain text only, no markdown.",
         "",
         "Facilities:",
     ]
@@ -313,7 +317,7 @@ def chat_reply(message: str, history: list, results: list = None) -> dict:
 
         if fac_list:
             ctx         = _build_context(results)
-            fmt_prompt  = _format_facilities_prompt(fac_list, raw_loc, n_want)
+            fmt_prompt  = _format_facilities_prompt(fac_list, raw_loc, n_want, message)
             full_prompt = f"{ctx}\n\n---\n{fmt_prompt}\n\nAssistant:"
             reply       = _call(full_prompt, search=False)
             if reply.startswith("Assistant:"):
