@@ -224,6 +224,17 @@ def chat_reply(message: str, history: list, results: list = None) -> dict:
             n_want   = int(n_match.group(1)) if n_match else 4
             fac_list, _ = _fac.find_nearby(raw_loc, n=n_want)
             if fac_list:
+                lines = ["Here are the nearest facilities I found:\n"]
+                for i, f in enumerate(fac_list, 1):
+                    dist = f.get("distance_mi")
+                    dist_str = f"  —  {dist} mi away" if dist is not None else ""
+                    lines.append(f"{i}. {f['name']}{dist_str}")
+                    if f.get("address"):
+                        lines.append(f"   {f['address']}")
+                    if f.get("phone"):
+                        lines.append(f"   {f['phone']}")
+                lines.append("\nPlease call ahead to confirm availability.")
+                reply = reply + "\n\n" + "\n".join(lines) if reply else "\n".join(lines)
                 return {
                     "reply":         reply,
                     "facilities":    fac_list,
