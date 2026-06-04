@@ -32,28 +32,16 @@ SYSTEM_BASE = (
     "and that most skin conditions are very treatable when caught early. "
     "Encourage them to take the next step without causing alarm. "
     "Never make definitive medical diagnoses. "
-    "When users ask for nearby clinics, dermatologists, or medical facilities, "
-    "use your search capability to find options near their location. "
-    "Search using specific distance-focused queries such as "
-    "'dermatologist nearest to [address]' or 'skin clinic closest to [address]'. "
-    "Always list results ordered by proximity — closest first. "
-    "If the user says options are too far or asks for closer ones, "
-    "search again with a tighter radius (e.g. within 1-2 miles) and avoid repeating places already mentioned. "
-    "By default list at most 3 facilities; if the user explicitly asks for more, list as many as requested. "
-    "IMPORTANT: Only include a facility if you have its complete street address (number, street, city, state, zip). "
-    "If you cannot find the full address for a facility, skip it entirely and find a different one that has a confirmed address. "
-    "Never output placeholder text like 'address not available' or 'cannot be found'. "
+    "MAP TRIGGER: When the user is asking about nearby clinics, dermatologists, hospitals, or any medical facility, "
+    "place the token [SHOW_MAP] on its own line at the very start of your response — before any other text. "
+    "This token is hidden from the user and will trigger an interactive map; do not mention it. "
+    "Only output [SHOW_MAP] when the user is genuinely requesting facility locations — not for general medical questions. "
     "LOCATION NORMALIZATION: When the user mentions any location or address — even if informally written "
     "(e.g. '73000verano rd irvine ca', 'near UCI', 'downtown LA') — interpret it as a US address and output "
-    "a single line at the very start of your response in exactly this format:\n"
+    "a single line immediately after [SHOW_MAP] (or at the very start if no map) in exactly this format:\n"
     "User location: [normalized full address or city, state]\n"
     "For example: 'User location: 73000 Verano Rd, Irvine, CA 92617' or 'User location: Irvine, CA'. "
     "If no location is mentioned by the user, omit this line entirely.\n"
-    "Format each facility entry exactly like this example:\n"
-    "1. Clinic Name\n"
-    "   Address: 123 Main St, City, CA 90000\n"
-    "   Phone: (000) 000-0000\n\n"
-    "After the list, add one short encouraging sentence reminding them to verify availability. "
     "Use plain text only, no markdown. Keep responses concise but warm."
 )
 
@@ -199,12 +187,6 @@ def generate_summary(results: list) -> str:
     return _call(prompt)
 
 
-_FACILITY_KEYWORDS = re.compile(
-    r'hospital|clinic|dermatologist|doctor|facility|facilities|'
-    r'nearest|closest|near me|nearby|around|close to|找医|附近|最近',
-    re.IGNORECASE
-)
-
 
 def _format_facilities_prompt(fac_list: list[dict], user_location: str, n: int) -> str:
     """Build a prompt asking AI to warmly present pre-fetched facility data."""
@@ -259,47 +241,7 @@ def _ai_normalize_location(text: str) -> str | None:
 def chat_reply(message: str, history: list, results: list = None) -> dict:
     """Multi-turn chat response. Returns reply text plus structured facility data."""
 
-    # ── Deterministic facility lookup via Overpass API ────────────────────────
-    asking_facilities = bool(_FACILITY_KEYWORDS.search(message))
-    if asking_facilities:
-        # 1. Try regex first (fast, no API call)
-        raw_loc = (
-            _extract_location(message)
-            or _extract_location(" ".join(h["content"] for h in history if h["role"] == "user"))
-        )
-        # 2. Regex failed → ask AI to normalize the address (handles "73000verano rd irvine ca")
-        if not raw_loc:
-            raw_loc = _ai_normalize_location(message)
-            if raw_loc:
-                print(f"[chat] AI-normalized location: {raw_loc!r}")
-
-        # How many facilities requested? default 4
-        n_match = re.search(r'(\d+)\s*(?:家|个|places?|facilities|hospitals?|clinics?)', message, re.IGNORECASE)
-        n_want  = int(n_match.group(1)) if n_match else 4
-
-        if raw_loc:
-            fac_list, coords = _fac.find_nearby(raw_loc, n=n_want)
-            if fac_list:
-                # Ask AI to format and warm up the pre-fetched data (no web search needed)
-                ctx         = _build_context(results)
-                fmt_prompt  = _format_facilities_prompt(fac_list, raw_loc, n_want)
-                full_prompt = f"{ctx}\n\n---\n{fmt_prompt}\n\nAssistant:"
-                reply       = _call(full_prompt, search=False)
-                if reply.startswith("Assistant:"):
-                    reply = reply[len("Assistant:"):].strip()
-
-                # Attach user location string for map geocoding
-                user_location = (
-                    _extract_ai_location(reply)
-                    or raw_loc
-                )
-                return {
-                    "reply":         reply,
-                    "facilities":    fac_list,
-                    "user_location": user_location,
-                }
-
-    # ── Fallback: standard AI reply with web search ───────────────────────────
+    # ── Standard AI reply (model decides whether to output [SHOW_MAP]) ────────
     ctx   = _build_context(results)
     lines = [ctx, "---"]
     for msg in history:
@@ -312,18 +254,35 @@ def chat_reply(message: str, history: list, results: list = None) -> dict:
     if reply.startswith("Assistant:"):
         reply = reply[len("Assistant:"):].strip()
 
-    parsed_fac = _parse_facilities(reply)
-    if parsed_fac:
-        user_location = (
-            _extract_ai_location(reply)
-            or _extract_location(message)
-            or _extract_location(reply)
+    # ── Detect [SHOW_MAP] token in model output ───────────────────────────────
+    show_map = bool(re.search(r'\[SHOW_MAP\]', reply, re.IGNORECASE))
+    reply    = re.sub(r'\[SHOW_MAP\]\s*\n?', '', reply, flags=re.IGNORECASE).strip()
+
+    if show_map:
+        # Extract location from message or history
+        raw_loc = (
+            _extract_location(message)
+            or _extract_location(" ".join(h["content"] for h in history if h["role"] == "user"))
+            or _extract_ai_location(reply)
         )
-    else:
-        user_location = None
+        if not raw_loc:
+            raw_loc = _ai_normalize_location(message)
+            if raw_loc:
+                print(f"[chat] AI-normalized location: {raw_loc!r}")
+
+        if raw_loc:
+            n_match  = re.search(r'(\d+)\s*(?:家|个|places?|facilities|hospitals?|clinics?)', message, re.IGNORECASE)
+            n_want   = int(n_match.group(1)) if n_match else 4
+            fac_list, _ = _fac.find_nearby(raw_loc, n=n_want)
+            if fac_list:
+                return {
+                    "reply":         reply,
+                    "facilities":    fac_list,
+                    "user_location": raw_loc,
+                }
 
     return {
         "reply":         reply,
-        "facilities":    parsed_fac,
-        "user_location": user_location,
+        "facilities":    [],
+        "user_location": None,
     }

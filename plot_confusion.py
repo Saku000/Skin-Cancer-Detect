@@ -1,23 +1,36 @@
 """
-plot_confusion.py — 从 test_results.csv 生成二分类混淆矩阵
+plot_confusion.py — 从 test_results*.csv 生成二分类混淆矩阵
 
-癌症（MEL / BCC / AKIEC）合并为 Cancer
-良性（NV / BKL / DF / VASC）合并为 Benign
+自动识别 CSV 格式：
+  旧格式（7类）: 含 isic_pred 列，用 top-1 类别映射到 Cancer/Benign
+  新格式（3类）: 含 cancer_total + pred_bin 列，用阈值判断
 
 使用方法：
-    python plot_confusion.py
+    python plot_confusion.py                          # 默认 test_results_n1.csv
+    python plot_confusion.py test_results.csv         # 指定文件
+    python plot_confusion.py test_results_n1.csv
 """
 
 import os
+import sys
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-CSV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_results.csv')
-OUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'confusion_matrix.png')
-
 CANCER_CLASSES = {'MEL', 'BCC', 'AKIEC'}
+
+# ── CSV 路径 ──────────────────────────────────────────────────────
+if len(sys.argv) > 1:
+    CSV_PATH = sys.argv[1]
+    if not os.path.isabs(CSV_PATH):
+        CSV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), CSV_PATH)
+else:
+    CSV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_results_n1.csv')
+
+OUT_PATH = os.path.splitext(CSV_PATH)[0] + '_confusion.png'
 
 
 def to_binary(cls: str) -> str:
@@ -31,17 +44,36 @@ def main():
         return
 
     df = pd.read_csv(CSV_PATH)
-    print(f'读取 {len(df)} 条记录')
 
-    # 使用 isic_pred（7类中概率最高），更公平
-    df['true_bin'] = df['true_class'].apply(to_binary)
-    df['pred_bin'] = df['isic_pred'].apply(to_binary)
+    # 过滤掉 skipped 的图片
+    if 'skipped' in df.columns:
+        skipped_n = df['skipped'].astype(str).str.lower().eq('true').sum()
+        df = df[df['skipped'].astype(str).str.lower() != 'true'].copy()
+        print(f'读取 {len(df)} 条有效记录（跳过 {skipped_n} 张质量不合格图片）')
+    else:
+        print(f'读取 {len(df)} 条记录')
 
-    # 计算混淆矩阵
+    # ── 判断格式，统一生成 true_bin / pred_bin ──
+    if 'pred_bin' in df.columns:
+        # 新格式：直接用现成列
+        df['true_bin'] = df['true_class'].apply(to_binary)
+        print(f'格式：新（3类，cancer_total 阈值判断）')
+        threshold_note = f'Cancer threshold: cancer_total ≥ 15%'
+    else:
+        # 旧格式：用 isic_pred top-1 映射
+        df['true_bin'] = df['true_class'].apply(to_binary)
+        df['pred_bin'] = df['isic_pred'].apply(to_binary)
+        print(f'格式：旧（7类，top-1 映射）')
+        threshold_note = 'Predicted class mapped to Cancer/Benign'
+
+    # ── 混淆矩阵 ─────────────────────────────────────────────────
     labels = ['Cancer', 'Benign']
     cm = pd.crosstab(df['true_bin'], df['pred_bin'],
-                     rownames=['True'], colnames=['Predicted'])[labels].reindex(labels)
-    cm = cm.fillna(0).astype(int)
+                     rownames=['True'], colnames=['Predicted'])
+    for lbl in labels:
+        if lbl not in cm.columns: cm[lbl] = 0
+        if lbl not in cm.index:   cm.loc[lbl] = 0
+    cm = cm[labels].reindex(labels).fillna(0).astype(int)
 
     TP = cm.loc['Cancer', 'Cancer']
     FN = cm.loc['Cancer', 'Benign']
@@ -49,8 +81,8 @@ def main():
     TN = cm.loc['Benign', 'Benign']
     total = TP + FN + FP + TN
 
-    sensitivity = TP / (TP + FN) if (TP + FN) else 0   # 癌症召回率
-    specificity = TN / (TN + FP) if (TN + FP) else 0   # 良性识别率
+    sensitivity = TP / (TP + FN) if (TP + FN) else 0
+    specificity = TN / (TN + FP) if (TN + FP) else 0
     precision   = TP / (TP + FP) if (TP + FP) else 0
     f1          = 2 * precision * sensitivity / (precision + sensitivity) if (precision + sensitivity) else 0
     accuracy    = (TP + TN) / total if total else 0
@@ -63,96 +95,73 @@ def main():
     print(f'  Overall Accuracy            : {accuracy*100:.1f}%')
     print(f'{"─"*40}\n')
 
-    # ── 绘图 ──────────────────────────────────────────────────────
-    fig = plt.figure(figsize=(10, 7), facecolor='#0f1923')
+    # ── 绘图（只显示 True Cancer 那行）────────────────────────────
+    fig = plt.figure(figsize=(10, 5), facecolor='#0f1923')
     gs  = gridspec.GridSpec(1, 2, width_ratios=[1.3, 1], wspace=0.05)
-
     ax_cm  = fig.add_subplot(gs[0])
     ax_met = fig.add_subplot(gs[1])
 
-    # 混淆矩阵热力图
-    colors = np.array([
-        [TP, FN],
-        [FP, TN],
-    ], dtype=float)
-    row_sums = colors.sum(axis=1, keepdims=True)
-    pct = np.where(row_sums > 0, colors / row_sums * 100, 0)
+    cmap = matplotlib.colormaps['RdYlGn']
 
-    cmap = plt.cm.get_cmap('RdYlGn')
-    diag_mask = np.eye(2, dtype=bool)
-    cell_colors = np.where(diag_mask, pct / 100, 1 - pct / 100)
+    # 1×2: [TP, FN]
+    cancer_total_n = TP + FN
+    tp_pct = TP / cancer_total_n * 100 if cancer_total_n else 0
+    fn_pct = FN / cancer_total_n * 100 if cancer_total_n else 0
 
-    for i in range(2):
-        for j in range(2):
-            color = cmap(cell_colors[i, j])
-            ax_cm.add_patch(plt.Rectangle((j, 1 - i), 1, 1, color=color, alpha=0.85))
-            count = colors[i, j]
-            p     = pct[i, j]
-            ax_cm.text(j + 0.5, 1.5 - i, f'{int(count)}\n({p:.1f}%)',
-                       ha='center', va='center', fontsize=16, fontweight='bold',
-                       color='white' if cell_colors[i, j] < 0.6 else '#111')
+    cell_data = [(TP, tp_pct, cmap(tp_pct / 100)),
+                 (FN, fn_pct, cmap(1 - fn_pct / 100))]
 
-    ax_cm.set_xlim(0, 2)
-    ax_cm.set_ylim(0, 2)
-    ax_cm.set_xticks([0.5, 1.5])
-    ax_cm.set_yticks([0.5, 1.5])
-    ax_cm.set_xticklabels(['Predicted\nCancer', 'Predicted\nBenign'],
-                           color='white', fontsize=11)
-    ax_cm.set_yticklabels(['True\nBenign', 'True\nCancer'],
-                           color='white', fontsize=11, rotation=90, va='center')
+    for j, (count, pct_val, color) in enumerate(cell_data):
+        ax_cm.add_patch(plt.Rectangle((j, 0), 1, 1, color=color, alpha=0.85))
+        ax_cm.text(j + 0.5, 0.5, f'{int(count)}\n({pct_val:.1f}%)',
+                   ha='center', va='center', fontsize=20, fontweight='bold',
+                   color='white' if pct_val < 60 else '#111')
+
+    ax_cm.set_xlim(0, 2); ax_cm.set_ylim(0, 1)
+    ax_cm.set_xticks([0.5, 1.5]); ax_cm.set_yticks([0.5])
+    ax_cm.set_xticklabels(['Predicted\nCancer', 'Predicted\nBenign'], color='white', fontsize=12)
+    ax_cm.set_yticklabels(['True\nCancer'], color='white', fontsize=12,
+                           rotation=90, va='center')
     ax_cm.tick_params(length=0)
     ax_cm.set_facecolor('#0f1923')
-    for spine in ax_cm.spines.values():
-        spine.set_visible(False)
-    ax_cm.set_title('Confusion Matrix (Binary)', color='white', fontsize=13,
+    for spine in ax_cm.spines.values(): spine.set_visible(False)
+    ax_cm.set_title('Cancer Detection Rate', color='white', fontsize=13,
                     fontweight='bold', pad=12)
 
     # 指标面板
     ax_met.set_facecolor('#0f1923')
-    ax_met.set_xlim(0, 1)
-    ax_met.set_ylim(0, 1)
+    ax_met.set_xlim(0, 1); ax_met.set_ylim(0, 1)
     ax_met.axis('off')
 
     metrics = [
-        ('Sensitivity',  sensitivity, '#e74c3c',
-         'Cancer correctly detected\n(TP / all true cancer)'),
-        ('Specificity',  specificity, '#2ecc71',
-         'Benign correctly rejected\n(TN / all true benign)'),
-        ('Precision',    precision,   '#3498db',
-         'Of predicted cancer,\nhow many are real'),
-        ('F1 Score',     f1,          '#f39c12',
-         'Harmonic mean of\nSensitivity & Precision'),
-        ('Accuracy',     accuracy,    '#9b59b6',
-         'Overall correct\npredictions'),
+        ('Sensitivity',  sensitivity, '#e74c3c', 'Cancer correctly detected\n(TP / all true cancer)'),
+        ('Precision',    precision,   '#3498db', 'Of predicted cancer,\nhow many are real'),
+        ('F1 Score',     f1,          '#f39c12', 'Harmonic mean of\nSensitivity & Precision'),
     ]
 
-    y_start = 0.95
+    y_start = 0.88
     for name, val, color, desc in metrics:
-        ax_met.text(0.05, y_start, name, color=color,
-                    fontsize=11, fontweight='bold', va='top')
-        ax_met.text(0.05, y_start - 0.035, desc, color='#aaa',
-                    fontsize=7.5, va='top')
-        bar_y = y_start - 0.09
-        ax_met.add_patch(plt.Rectangle((0.05, bar_y), 0.88, 0.022,
-                                        color='#1e2d3d', zorder=1))
-        ax_met.add_patch(plt.Rectangle((0.05, bar_y), 0.88 * val, 0.022,
-                                        color=color, alpha=0.9, zorder=2))
-        ax_met.text(0.97, bar_y + 0.011, f'{val*100:.1f}%',
-                    color='white', fontsize=10, fontweight='bold',
-                    ha='right', va='center', zorder=3)
-        y_start -= 0.19
+        ax_met.text(0.05, y_start, name, color=color, fontsize=11, fontweight='bold', va='top')
+        ax_met.text(0.05, y_start - 0.05, desc, color='#aaa', fontsize=7.5, va='top')
+        bar_y = y_start - 0.115
+        ax_met.add_patch(plt.Rectangle((0.05, bar_y), 0.88, 0.028, color='#1e2d3d', zorder=1))
+        ax_met.add_patch(plt.Rectangle((0.05, bar_y), 0.88 * val, 0.028, color=color, alpha=0.9, zorder=2))
+        ax_met.text(0.97, bar_y + 0.014, f'{val*100:.1f}%',
+                    color='white', fontsize=11, fontweight='bold', ha='right', va='center', zorder=3)
+        y_start -= 0.28
 
-    ax_met.text(0.05, 0.02, f'n = {total} images  ·  Cancer: {TP+FN}  ·  Benign: {FP+TN}',
-                color='#666', fontsize=8, va='bottom')
-    ax_met.set_title('Metrics', color='white', fontsize=13,
-                     fontweight='bold', pad=12)
+    csv_name = os.path.basename(CSV_PATH)
+    ax_met.text(0.05, 0.02,
+                f'n = {TP+FN} cancer images  ·  {threshold_note}',
+                color='#666', fontsize=7.5, va='bottom')
+    ax_met.set_title('Metrics', color='white', fontsize=13, fontweight='bold', pad=12)
 
-    fig.suptitle('Gemini API — Binary Cancer Detection\n(Cancer = MEL + BCC + AKIEC)',
-                 color='white', fontsize=14, fontweight='bold', y=0.98)
+    fig.suptitle(f'Gemini API — Cancer Detection  [{csv_name}]\n'
+                 f'(Cancer = MEL + BCC + AKIEC)',
+                 color='white', fontsize=13, fontweight='bold', y=1.02)
 
     plt.savefig(OUT_PATH, dpi=150, bbox_inches='tight', facecolor=fig.get_facecolor())
     print(f'图表已保存 → {OUT_PATH}')
-    plt.show()
 
 
 if __name__ == '__main__':
