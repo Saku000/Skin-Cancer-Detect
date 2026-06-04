@@ -582,8 +582,9 @@ async function sendMessage(text) {
     });
     const data = await res.json();
     typing.remove();
-    appendMessage('assistant', data.reply);
-    chatHistory.push({ role: 'assistant', content: data.reply });
+    const displayReply = (data.reply || '').replace(/^\[SHOW_MAP\]\n?/i, '').trim();
+    appendMessage('assistant', displayReply);
+    chatHistory.push({ role: 'assistant', content: displayReply });
 
     if (data.facilities?.length) {
       if (data.user_location) lastUserLocation = data.user_location;

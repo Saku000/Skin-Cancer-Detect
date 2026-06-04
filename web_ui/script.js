@@ -329,8 +329,9 @@ async function sendMessage(text) {
     const data = await res.json();
     console.log('[chat] data keys:', Object.keys(data), '| facilities:', data.facilities?.length ?? 'none');
     typing.remove();
-    const msgEl = appendMessage('assistant', data.reply);
-    chatHistory.push({ role: 'assistant', content: data.reply });
+    const displayReply = (data.reply || '').replace(/^\[SHOW_MAP\]\n?/i, '').trim();
+    const msgEl = appendMessage('assistant', displayReply);
+    chatHistory.push({ role: 'assistant', content: displayReply });
     if (data.facilities && data.facilities.length > 0) {
       if (data.user_location) lastUserLocation = data.user_location;
       renderFacilityMap(data.facilities, data.user_location || lastUserLocation);
