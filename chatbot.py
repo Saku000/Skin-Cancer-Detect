@@ -152,32 +152,6 @@ def _extract_ai_location(text: str) -> str | None:
     return loc
 
 
-def _parse_facilities(text: str) -> list[dict]:
-    """Parse numbered facility entries from formatted response text."""
-    facilities = []
-    current: dict = {}
-    for line in text.splitlines():
-        stripped = line.strip()
-        if re.match(r'^\d+\.', stripped):
-            if current.get('name'):
-                facilities.append(current)
-            current = {'name': re.sub(r'^\d+\.\s*', '', stripped)}
-        elif stripped.startswith('Address:'):
-            current['address'] = stripped[len('Address:'):].strip()
-        elif stripped.startswith('Phone:'):
-            current['phone'] = stripped[len('Phone:'):].strip()
-    if current.get('name'):
-        facilities.append(current)
-
-    # Drop entries whose address is missing or a placeholder
-    _BAD_ADDR = re.compile(
-        r'^\s*$|无法|not (available|found|specified|provided)|'
-        r'address unknown|n/?a\b|\(.*\)',
-        re.IGNORECASE
-    )
-    return [f for f in facilities if f.get('address') and not _BAD_ADDR.search(f['address'])]
-
-
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def generate_summary(results: list) -> str:
@@ -185,36 +159,6 @@ def generate_summary(results: list) -> str:
     ctx    = _build_context(results)
     prompt = f"{ctx}\n\n---\n{SUMMARY_REQUEST}"
     return _call(prompt)
-
-
-
-def _format_facilities_prompt(fac_list: list[dict], user_location: str, n: int) -> str:
-    """Build a prompt asking AI to warmly present pre-fetched facility data."""
-    lines = [
-        f"The user asked for the {n} nearest medical facilities to: {user_location}",
-        "Here is the real distance-sorted data from OpenStreetMap. "
-        "Present these results warmly and encouragingly. "
-        "Use the exact names, addresses, phones, and distances provided — do not change or add any. "
-        "Format each entry exactly as:\n"
-        "N. Name\n"
-        "   Address: ...\n"
-        "   Phone: ...\n"
-        "   Distance: X.X mi\n\n"
-        "After the list add one short warm sentence encouraging them to call ahead.",
-        "",
-        "Facilities:",
-    ]
-    for i, f in enumerate(fac_list, 1):
-        addr  = f.get("address") or "Address not available"
-        phone = f.get("phone")   or "Phone not available"
-        dist  = f.get("distance_mi", "?")
-        lines.append(
-            f"{i}. {f['name']}\n"
-            f"   Address: {addr}\n"
-            f"   Phone: {phone}\n"
-            f"   Distance: {dist} mi"
-        )
-    return "\n".join(lines)
 
 
 def _ai_normalize_location(text: str) -> str | None:
