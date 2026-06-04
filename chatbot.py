@@ -118,10 +118,8 @@ _US_STATE  = (r'(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|M
 _ROAD_TYPE = r'(?:rd|st|ave|blvd|dr|way|ln|ct|pl|cir|pkwy|road|street|avenue|boulevard|drive)\.?'
 
 def _extract_location(text: str) -> str | None:
-    """Extract user location from message.
-    Tries full street address first so house numbers like '73000' are not mistaken for zip codes.
-    """
-    # 1. Full street address: "123 Some Rd, City, CA[ 12345]"
+    """Extract user location from message."""
+    # 1. Full street address with state: "123 Some Rd, City, CA[ 12345]"
     m = re.search(
         r'(\d+\s+\w[\w ]{2,40}' + _ROAD_TYPE +
         r'[,\s][\w\s,]{3,60}' + _US_STATE + r'(?:\s+\d{5})?)',
@@ -129,12 +127,18 @@ def _extract_location(text: str) -> str | None:
     )
     if m:
         return m.group(1).strip()
-    # 2. Zip clearly preceded by state abbreviation: "CA 92617"
+    # 2. Street address without state: "123 Some Rd City" or "123 Some Rd, City"
+    m = re.search(
+        r'(\d+\s+\w[\w ]{2,30}' + _ROAD_TYPE + r'[,\s]+([A-Za-z]{3,20}))',
+        text, re.IGNORECASE
+    )
+    if m:
+        return m.group(1).strip()
+    # 3. Zip clearly preceded by state abbreviation: "CA 92617"
     m = re.search(_US_STATE + r'\s*,?\s*(\d{5})\b', text, re.IGNORECASE)
     if m:
         return m.group(1)
-    # 3. Standalone zip — must not be immediately followed by a letter or space+letter
-    #    (avoids treating "73000verano" or "73000 verano" as zip)
+    # 4. Standalone zip
     m = re.search(r'(?<!\d)(\d{5})(?!\d)(?![A-Za-z])(?!\s+[A-Za-z])', text)
     if m:
         return m.group(1)
