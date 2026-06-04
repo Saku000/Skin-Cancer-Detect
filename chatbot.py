@@ -134,14 +134,7 @@ def _extract_location(text: str) -> str | None:
     # 1. Full street address with state: "123 Some Rd, City, CA[ 12345]"
     m = re.search(
         r'(\d+\s+\w[\w ]{2,40}' + _ROAD_TYPE +
-        r'[,\s][\w\s,]{3,60}' + _US_STATE + r'(?:\s+\d{5})?)',
-        text, re.IGNORECASE
-    )
-    if m:
-        return m.group(1).strip()
-    # 2. Street address without state: "123 Some Rd City" or "123 Some Rd, City"
-    m = re.search(
-        r'(\d+\s+\w[\w ]{2,30}' + _ROAD_TYPE + r'[,\s]+([A-Za-z]{3,20}))',
+        r'[,\s][\w\s,]{3,60}\b' + _US_STATE + r'\b(?:\s+\d{5})?)',
         text, re.IGNORECASE
     )
     if m:
