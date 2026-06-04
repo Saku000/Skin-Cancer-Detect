@@ -17,10 +17,11 @@ let nRuns            = 3;
 let lastUserLocation = null;
 
 // Map state
-let leafletMap = null;
-let userMarker = null;
-let userCoord  = null;
-let mapInited  = false;
+let leafletMap    = null;
+let userMarker    = null;
+let userCoord     = null;
+let mapInited     = false;
+let facilityLayer = null;   // LayerGroup holding all facility + user markers
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
 const screenMain    = document.getElementById('screenMain');
@@ -729,9 +730,8 @@ function _circle(color) { return { radius: 9, fillColor: color, color: '#fff', w
 
 function _setUserMarker(pos) {
   userCoord = pos;
-  if (userMarker) userMarker.remove();
   userMarker = L.circleMarker([pos.lat, pos.lon], _circle('#00c4d2'))
-    .addTo(leafletMap).bindPopup('Your location');
+    .addTo(facilityLayer).bindPopup('Your location');
   mapLocateBtn.disabled = false;
 }
 
@@ -743,6 +743,7 @@ function initMapIfNeeded() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap', maxZoom: 18,
   }).addTo(leafletMap);
+  facilityLayer = L.layerGroup().addTo(leafletMap);
   leafletMap.setView([37.5, -119.0], 6);
   setTimeout(() => leafletMap.invalidateSize(), 120);
 }
@@ -769,6 +770,11 @@ async function _geocodeUserAddr(addr) {
 }
 
 async function plotFacilities(facilities, userLocation) {
+  // Clear previous markers before plotting new results
+  facilityLayer.clearLayers();
+  userMarker = null;
+  userCoord  = null;
+  mapLocateBtn.disabled = true;
   leafletMap.invalidateSize();
 
   if (userLocation) {
@@ -798,7 +804,7 @@ async function plotFacilities(facilities, userLocation) {
         ? `<br><span style="font-size:11px;color:#4285f4;font-weight:600">📍 ${_fmtDist(distMi)} away</span>`
         : '';
     L.circleMarker([pos.lat, pos.lon], _circle('#ff4d6d'))
-      .addTo(leafletMap)
+      .addTo(facilityLayer)
       .bindPopup(`
         <div style="font-family:sans-serif;min-width:160px;line-height:1.5">
           <b style="font-size:13px">${f.name}</b><br>
