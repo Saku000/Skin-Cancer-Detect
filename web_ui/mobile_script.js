@@ -591,7 +591,7 @@ async function sendMessage(text) {
       showScreen(screenMap);
       setTimeout(() => {
         initMapIfNeeded();
-        plotFacilities(data.facilities, data.user_location || lastUserLocation);
+        plotFacilities(data.facilities, data.user_location || lastUserLocation, data.user_coords);
       }, 120);
     }
   } catch {
@@ -769,7 +769,7 @@ async function _geocodeUserAddr(addr) {
   return null;
 }
 
-async function plotFacilities(facilities, userLocation) {
+async function plotFacilities(facilities, userLocation, userCoords) {
   // Clear previous markers before plotting new results
   facilityLayer.clearLayers();
   userMarker = null;
@@ -778,10 +778,15 @@ async function plotFacilities(facilities, userLocation) {
   leafletMap.invalidateSize();
 
   if (userLocation) {
-    const isZip = /^\d{5}$/.test(userLocation.trim());
-    const pos   = isZip
-      ? await _geocode(`${userLocation.trim()}, USA`)
-      : await _geocodeUserAddr(userLocation);
+    let pos = null;
+    if (userCoords?.lat && userCoords?.lon) {
+      pos = { lat: userCoords.lat, lon: userCoords.lon };
+    } else {
+      const isZip = /^\d{5}$/.test(userLocation.trim());
+      pos = isZip
+        ? await _geocode(`${userLocation.trim()}, USA`)
+        : await _geocodeUserAddr(userLocation);
+    }
     if (pos) { _setUserMarker(pos); leafletMap.setView([pos.lat, pos.lon], 13); }
     await _delay(1200);
   }

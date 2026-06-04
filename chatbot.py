@@ -349,10 +349,15 @@ def chat_reply(message: str, history: list, results: list = None) -> dict:
                 reply = reply[len("Assistant:"):].strip()
             user_loc = _extract_ai_location(reply) or raw_loc
             reply = re.sub(r'User location:.*\n?', '', reply, flags=re.IGNORECASE).strip()
+            # coords already geocoded by find_nearby; fall back to geocoding user_loc
+            if not coords:
+                coords = _fac.geocode(user_loc)
+            user_coords = {"lat": coords[0], "lon": coords[1]} if coords else None
             return {
                 "reply":         reply,
                 "facilities":    fac_list,
                 "user_location": user_loc,
+                "user_coords":   user_coords,
             }
 
         # Both Overpass and AI search failed

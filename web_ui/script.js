@@ -68,6 +68,21 @@ async function _geocode(query, countryCode = 'us') {
   return null;
 }
 
+async function _geocodeUserLocation(loc) {
+  if (!loc) return null;
+  const isZip = /^\d{5}$/.test(loc.trim());
+  const pos1 = await _geocode(isZip ? `${loc.trim()}, USA` : loc);
+  if (pos1) return pos1;
+  // Fallback: city + state (last two comma-parts)
+  const parts = loc.split(',').map(s => s.trim()).filter(Boolean);
+  if (parts.length >= 3) {
+    await _delay(1100);
+    const pos2 = await _geocode(parts.slice(-2).join(', '));
+    if (pos2) return pos2;
+  }
+  return null;
+}
+
 async function _geocodeFacility(f) {
   const addr = (f.address || '').trim();
   // Parenthetical placeholders like "(Address not specified…)" have no real street data — skip to name
@@ -133,7 +148,7 @@ function _setUserMarker(pos) {
   document.getElementById('mapLocateBtn').disabled = false;
 }
 
-async function openMapPanel(facilities, userLocation) {
+async function openMapPanel(facilities, userLocation, userCoords) {
   // Cancel any pending close/destroy
   if (_closeMapTimer) { clearTimeout(_closeMapTimer); _closeMapTimer = null; }
 
@@ -170,11 +185,14 @@ async function openMapPanel(facilities, userLocation) {
   await _delay(320);
   leafletMap.invalidateSize();
 
-  // 1. Geocode user location — either a zip ("92617") or full address ("73000 Verano Rd, Irvine, CA")
+  // 1. User location marker — use backend coords if available, else geocode
   if (userLocation) {
-    const isZip  = /^\d{5}$/.test(userLocation.trim());
-    const query  = isZip ? `${userLocation.trim()}, USA` : userLocation;
-    const pos    = await _geocode(query);
+    let pos = null;
+    if (userCoords?.lat && userCoords?.lon) {
+      pos = { lat: userCoords.lat, lon: userCoords.lon };
+    } else {
+      pos = await _geocodeUserLocation(userLocation);
+    }
     if (pos) {
       _setUserMarker(pos);
       leafletMap.setView([pos.lat, pos.lon], 13);
@@ -274,8 +292,8 @@ document.getElementById('mapAddrInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('mapAddrBtn').click();
 });
 
-function renderFacilityMap(facilities, userLocation) {
-  openMapPanel(facilities, userLocation);
+function renderFacilityMap(facilities, userLocation, userCoords) {
+  openMapPanel(facilities, userLocation, userCoords);
 }
 
 function appendTyping() {
@@ -333,7 +351,7 @@ async function sendMessage(text) {
     chatHistory.push({ role: 'assistant', content: data.reply });
     if (data.facilities && data.facilities.length > 0) {
       if (data.user_location) lastUserLocation = data.user_location;
-      renderFacilityMap(data.facilities, data.user_location || lastUserLocation);
+      renderFacilityMap(data.facilities, data.user_location || lastUserLocation, data.user_coords);
     }
   } catch {
     typing.remove();
